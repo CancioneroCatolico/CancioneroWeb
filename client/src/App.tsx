@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { Portada } from './components/Portada'
+import { Resultados } from './components/Resultados'
 import { DetalleCancion } from './components/DetalleCancion'
 // IMPORTAMOS EL PROVIDER
 import { BusquedaProvider } from './context/BusquedaContext'
@@ -13,6 +14,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<Portada />} />
+            <Route path="buscar" element={<Resultados />} />
             <Route path="cancion/:id" element={<DetalleCancion />} />
           </Route>
         </Routes>

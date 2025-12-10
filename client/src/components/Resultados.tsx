@@ -1,30 +1,47 @@
-import { Link } from 'react-router-dom'
-import { useCanciones } from '../hooks/useCanciones'
+import { useEffect, useState } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { useCanciones } from '../hooks/useCanciones';
+import type { Cancion } from '../types';
 
-export function Portada() {
+export function Resultados() {
+    const [searchParams] = useSearchParams();
+    const query = searchParams.get('q') || '';
     const { canciones, cargando, error } = useCanciones();
+    const [resultados, setResultados] = useState<Cancion[]>([]);
 
-    // En Portada mostramos TODO, o quizás solo las últimas agregadas si hubiera esa info.
-    // Por ahora mostramos todas tal cual vienen del hook.
-    // NO filtramos por búsqueda aquí.
+    useEffect(() => {
+        if (!query) { // Si no busca nada, no hay resultados
+            setResultados([]);
+            return;
+        }
+
+        if (canciones.length > 0) {
+            const busqueda = query.toLowerCase();
+            const filtradas = canciones.filter(c =>
+                c.titulo.toLowerCase().includes(busqueda) ||
+                c.autor.toLowerCase().includes(busqueda) ||
+                c.numeroCancion?.toString().includes(busqueda)
+            );
+            setResultados(filtradas);
+        }
+    }, [query, canciones]);
 
     return (
-        <>
+        <div>
             <h2 style={{ marginBottom: '20px', color: '#333' }}>
-                Últimas Agregadas
+                Resultados para "{query}"
             </h2>
 
-            {cargando && <p style={{ textAlign: 'center', color: '#666' }}>Cargando repertorio...</p>}
+            {cargando && <p style={{ textAlign: 'center', color: '#666' }}>Buscando...</p>}
             {error && <p style={{ textAlign: 'center', color: 'red' }}>{error}</p>}
 
-            {!cargando && !error && canciones.length === 0 && (
-                <p style={{ textAlign: 'center' }}>No hay canciones disponibles.</p>
+            {!cargando && !error && resultados.length === 0 && (
+                <p style={{ textAlign: 'center' }}>No se encontraron canciones que coincidan con "{query}".</p>
             )}
 
             <div className="lista">
-                {canciones.map((c) => (
+                {resultados.map((c) => (
                     <div key={c._id} style={{ backgroundColor: 'white', padding: '15px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #eee', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-
                         <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 <strong style={{ fontSize: '1.1em', color: '#007bff' }}>#{c.numeroCancion}</strong>
@@ -41,6 +58,6 @@ export function Portada() {
                     </div>
                 ))}
             </div>
-        </>
-    )
+        </div>
+    );
 }
