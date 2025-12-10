@@ -1,0 +1,50 @@
+[{
+    "titulo": "Abba Padre",
+    "autor": "Desconocido",
+    "categorias": ["Entrada"],
+    "letra":[
+        "[LAm]El señor, el señor ya está aquí",
+        "derramando su amor sobre ti.",
+        "Y cant[REm]emos para [LAm]Él,",
+        "enton[REm]emos a una v[LAm]oz (bis)",
+        "[SOL]Abba P[DO]adre, v[SOL]enga tu r[DO]eino",
+        "[SOL]Abba P[DO]adre, v[MIm]enga tu r[LAm]eino.",
+        "[LAm]Deja toda tristeza y dolor,",
+        "y levanta tus brazos a Dios."
+    ],
+    "tonoBase":"LAm",
+    "numeroCancion": 1,
+    "videoUrl":"https://www.youtube.com/watch?v=NQ9HW-Wbmr4&list=RDNQ9HW-Wbmr4&start_radio=1"
+},
+{
+    "titulo": "Abre el corazón",
+    "autor": "Desconocido",
+    "categorias": ["Meditacion"],
+    "letra": [
+        "[SOL]Abre el c[DO]orazón,",
+        "[SOL]recibe [DO]lo que se te reg[SOL]ala",
+        "y g[RE]oza, [SOL]solo el am[RE]or transf[SOL]orma."
+    ],
+    "tonoBase": "SOL",
+    "numeroCancion": 2,
+    "videoUrl": "https://www.youtube.com/watch?v=HSCPvHha5xs&list=RDHSCPvHha5xs&start_radio=1"
+},
+{
+    "titulo": "",
+    "autor": "",
+    "categorias": [],
+    "letra": [],
+    "tonoBase": "",
+    "numeroCancion": 3,
+    "videoUrl": ""
+},
+{
+    "titulo": "",
+    "autor": "",
+    "categorias": [],
+    "letra": [],
+    "tonoBase": "",
+    "numeroCancion": 4,
+    "videoUrl": ""
+}]
+    

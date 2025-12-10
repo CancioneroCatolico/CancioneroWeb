@@ -1,46 +1,106 @@
-let canciones = [
-    { id: 1, titulo: "Abba Padre", autor: "Desconocido", categoria: "Entrada", tono: "LAm"},
-    { id: 2, titulo: "Santo, Santo, Santo", autor: "Desconocido", categoria: "Santo", tono: "SOL"}
-];
+const Cancion = require('../models/cancion.model');
+const Counter = require('../models/counter.model');
 
-function listar(_req,res) { res.json(canciones); }
-
-function obtenerPorId(req, res) {
-    const cancion = canciones.find(c => c.id === Number(req.params.id));
-    if (!cancion) 
-        return res.status(404).json({ error: "Canción no encontrada"});
-    res.json(cancion);
+// GET /canciones
+async function listar(_req, res) {
+  const canciones = await Cancion.find().lean();
+  res.json(canciones);
 }
 
-function crear(req, res) {
-    const { titulo, autor, categoria, tono } = req.body;
-    if (!titulo || !autor || !categoria || !tono)
-        return res.status(400).json({ error: "Faltan datos"});
+// GET /canciones/:id (Busca por numeroCancion)
+async function obtenerPorId(req, res) {
+  try {
+    const numero = parseInt(req.params.id);
+    if (isNaN(numero))
+      return res.status(400).json({ error: "El parámetro debe ser un número (numeroCancion)" });
 
-    const id = canciones.length ? Math.max(...canciones.map(c => c.id)) + 1 : 1;
-    const nueva = { id, titulo, autor, categoria, tono };
-    canciones.push(nueva);
+    const cancion = await Cancion.findOne({ numeroCancion: numero }).lean();
+
+    if (!cancion)
+      return res.status(404).json({ error: "Canción no encontrada " });
+    res.json(cancion);
+  } catch (err) {
+    return res.status(500).json({ error: "Error en el servidor", detalle: err.message });
+  }
+}
+
+// POST /canciones
+async function crear(req, res) {
+  try {
+    let { numeroCancion } = req.body;
+
+    if (!numeroCancion) {
+      const ultimaCancion = await Counter.findByIdAndUpdate(
+        { _id: 'canciones' },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+      ).lean();
+
+      numeroCancion = ultimaCancion.seq;
+    }
+
+    const nueva = await Cancion.create({ ...req.body, numeroCancion });
     res.status(201).json(nueva);
+  } catch (err) {
+    res.status(400).json({ error: "Datos inválidos / número duplicado", detalle: err.message });
+  }
 }
 
-function actualizar(req, res) {
-    const { titulo, autor, categoria, tono } = req.body;
-    const cancion = canciones.find(c => c.id === Number(req.params.id));
 
-    if(!cancion)
-        return res.status(404).json({ error: "Canción no encontrada"});
-    if(!titulo || !autor || !categoria || !tono)
-        return res.status(400).json({ error: "Faltan datos"});
-    Object.assign(cancion, { titulo, autor, categoria, tono });
-    res.json(cancion);
+// PUT /canciones/:id
+async function actualizar(req, res) {
+  try {
+    const { numeroCancion, ...resto } = req.body;
+
+    // Si el body trae numeroCancion, checkeamos que no esté usado por otra canción
+    if (numeroCancion !== undefined) {
+      const repetida = await Cancion.findOne({
+        numeroCancion,
+        _id: { $ne: req.params.id } // distinta canción
+      }).lean();
+
+      if (repetida) {
+        return res.status(400).json({
+          error: 'Ese número de canción ya está usado por otra canción'
+        });
+      }
+    }
+
+    // Armamos el objeto de actualización
+    const datosActualizados = {
+      ...resto,
+      ...(numeroCancion !== undefined ? { numeroCancion } : {})
+    };
+
+    const actualizada = await Cancion.findByIdAndUpdate(
+      req.params.id,
+      datosActualizados,
+      { new: true, runValidators: true }
+    ).lean();
+
+    if (!actualizada) {
+      return res.status(404).json({ error: 'Canción no encontrada' });
+    }
+
+    res.json(actualizada);
+  } catch (err) {
+    res.status(400).json({
+      error: 'Datos o ID inválidos',
+      detalle: err.message
+    });
+  }
 }
 
-function eliminar(req, res) {
-    const i = canciones.findIndex(c => c.id === Number(req.params.id));
-    if(i === -1)
-        return res.status(404).json({ error: "Canción no encontrada"});
-    canciones.splice(i, 1);
-    res.json({ mensaje: "Canción eliminada"});
+// DELETE /canciones/:id
+async function eliminar(req, res) {
+  try {
+    const borrada = await Cancion.findByIdAndDelete(req.params.id).lean();
+    if (!borrada)
+      return res.status(404).json({ error: "Canción no encontrada " });
+    res.json({ mensaje: "Canción eliminada " });
+  } catch {
+    res.status(400).json({ error: "ID inválido " });
+  }
 }
 
 module.exports = { listar, obtenerPorId, crear, actualizar, eliminar };
