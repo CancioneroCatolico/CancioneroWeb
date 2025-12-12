@@ -10,7 +10,6 @@ export function parseLyricsLine(line: string): ChordSegment[] {
     // Captura el acorde y luego el texto hasta el siguiente acorde o fin de linea
     const regex = /\[(.*?)\]([^\[]*)/g;
 
-    let lastIndex = 0;
     let match;
 
     // Si la linea no arranca con acorde, capturamos el texto inicial
