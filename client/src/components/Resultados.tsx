@@ -28,11 +28,11 @@ export function Resultados() {
 
     return (
         <div>
-            <h2 style={{ marginBottom: '20px', color: '#333' }}>
+            <h2 className="text-dynamic-title" style={{ marginBottom: '20px' }}>
                 Resultados para "{query}"
             </h2>
 
-            {cargando && <p style={{ textAlign: 'center', color: '#666' }}>Buscando...</p>}
+            {cargando && <p style={{ textAlign: 'center', color: 'var(--secondary-color)' }}>Buscando...</p>}
             {error && <p style={{ textAlign: 'center', color: 'red' }}>{error}</p>}
 
             {!cargando && !error && resultados.length === 0 && (
@@ -41,18 +41,18 @@ export function Resultados() {
 
             <div className="lista">
                 {resultados.map((c) => (
-                    <div key={c._id} style={{ backgroundColor: 'white', padding: '15px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #eee', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div key={c._id} className="card" style={{ padding: '15px', marginBottom: '10px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <strong style={{ fontSize: '1.1em', color: '#007bff' }}>#{c.numeroCancion}</strong>
+                                <strong className="text-primary" style={{ fontSize: '1.1em' }}>#{c.numeroCancion}</strong>
                                 <strong style={{ fontSize: '1.1em' }}>{c.titulo}</strong>
                             </div>
-                            <div style={{ color: '#666', marginTop: '4px', marginLeft: '30px' }}>
-                                {c.autor} <small style={{ background: '#eee', padding: '2px 6px', borderRadius: '4px' }}>{c.tonoBase}</small>
+                            <div className="text-secondary" style={{ marginTop: '4px', marginLeft: '30px' }}>
+                                {c.autor} <small className="badge" style={{ padding: '2px 6px', borderRadius: '4px' }}>{c.tonoBase}</small>
                             </div>
                         </div>
 
-                        <Link to={`/cancion/${c.numeroCancion}`} style={{ background: '#007bff', color: 'white', padding: '8px 15px', textDecoration: 'none', borderRadius: '20px', fontSize: '0.9em', fontWeight: 'bold' }}>
+                        <Link to={`/cancion/${c.numeroCancion}`} className="btn-primary" style={{ padding: '8px 15px', textDecoration: 'none', borderRadius: '20px', fontSize: '0.9em', fontWeight: 'bold' }}>
                             Ver Letra
                         </Link>
                     </div>

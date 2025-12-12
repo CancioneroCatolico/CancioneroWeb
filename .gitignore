@@ -1,0 +1,36 @@
+# --- Dependencias (Backend y Frontend) ---
+node_modules/
+
+# --- Entorno y Secretos (MUY IMPORTANTE) ---
+.env
+.env.local
+.env.*.local
+# (Opcional: Si tienes archivos como .env.production, agrégalos aquí si tienen claves reales)
+
+# --- Archivos de Construcción (Builds) ---
+dist/
+dist-ssr/
+build/
+
+# --- Logs y Debug ---
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# --- Archivos del Sistema Operativo ---
+.DS_Store
+Thumbs.db
+
+# --- Configuración de Editores (VS Code, JetBrains, Visual Studio) ---
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

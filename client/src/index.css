@@ -3,70 +3,522 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Textura de colores basada en el diseño solicitado (Red Theme) */
+
+  /* Light Mode */
+  --bg-color: #f8f6f6;
+  --text-color: #111827;
+  /* Gray 900 */
+  --primary-color: #ED8C2F;
+  --primary-hover: #c90f0f;
+
+  --dynamic-title: #111827;
+  /* Black in light mode */
+
+  --secondary-color: #4b5563;
+  /* Gray 600 */
+
+  --card-bg: #ffffff;
+  --card-border: #e5e7eb;
+  /* Gray 200 */
+  --card-shadow: rgba(0, 0, 0, 0.05);
+
+  --nav-bg: rgba(255, 255, 255, 0.9);
+  --input-bg: #f3f4f6;
+  /* Gray 100 - darken from 50 (f9fafb) */
+  /* Gray 50 */
+  --button-hover: #f3f4f6;
+
+  --font-display: 'Spline Sans', sans-serif;
+  --font-body: 'Noto Sans', sans-serif;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
+/* TEMA OSCURO */
+.dark {
+  /* Dark Mode */
+  --bg-color: #0a0505;
+  --text-color: #f3f3f3;
 
-a:hover {
-  color: #535bf2;
+  /* Un poco más brillante para modo oscuro */
+  /* --primary-hover: #ED8C2F; */
+  --primary-hover: #ff3333;
+
+
+  --dynamic-title: var(--primary-color);
+
+  --secondary-color: #d4a5a5;
+
+  --card-bg: #160b0b;
+  --card-border: #361515;
+  /* Tinted border */
+  --card-shadow: rgba(0, 0, 0, 0.4);
+
+  --nav-bg: rgba(10, 5, 5, 0.95);
+  --input-bg: #160b0b;
+  --button-hover: rgba(236, 19, 19, 0.15);
+  /* Primary tint */
 }
 
 body {
   margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
   width: 100%;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--font-body);
+  transition: background-color 0.3s, color 0.3s;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
+a {
   font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+  color: var(--primary-color);
+  text-decoration: inherit;
+}
+
+a:hover {
+  filter: brightness(1.1);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--text-color);
+}
+
+/* Clases utilitarias globales */
+.card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 4px 6px var(--card-shadow);
+}
+
+/* Utility Classes matching the Red Theme */
+
+.input-search {
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 8px;
+  /* Rounded LG */
+  border: 1px solid var(--card-border);
+  outline: none;
+  font-size: 0.95em;
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  transition: all 0.2s;
+}
+
+.input-search:focus {
+  box-shadow: 0 0 0 2px var(--primary-color);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
   cursor: pointer;
-  transition: border-color 0.25s;
+  font-weight: 600;
+  font-size: 0.9em;
+  transition: all 0.2s;
+  background-color: var(--button-hover);
+  color: var(--text-color);
 }
 
-button:hover {
-  border-color: #646cff;
+.btn:hover {
+  filter: brightness(0.95);
 }
 
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+.btn-primary {
+  background-color: var(--primary-color);
+  color: #ffffff !important;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+}
+
+.btn-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background-color: var(--button-hover);
+  color: var(--text-color);
+  border: 1px solid var(--card-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.2em;
+  transition: background-color 0.2s;
+}
+
+.btn-icon:hover {
+  background-color: rgba(var(--primary-color), 0.1);
+  /* Fallback or complex calc if var is hex... handled simply below */
+  filter: brightness(0.9);
+}
+
+.badge {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85em;
+  font-weight: 600;
+  background-color: var(--input-bg);
+  /* surface-like */
+  color: var(--text-color);
+  border: 1px solid var(--card-border);
+}
+
+
+.text-primary {
+  color: var(--primary-color);
+}
+
+.text-secondary {
+  color: var(--secondary-color);
+}
+
+.text-dynamic-title {
+  color: var(--dynamic-title);
+}
+
+.btn-grid-key {
+  padding: 8px 0;
+  font-size: 0.9em;
+  background-color: transparent;
+  color: var(--text-color);
+  border: 1px solid var(--card-border);
+  font-weight: normal;
+  transition: all 0.2s;
+}
+
+.btn-grid-key:hover {
+  background-color: var(--button-hover);
+  filter: brightness(0.95);
+}
+
+.btn-grid-key.active {
+  background-color: var(--primary-color);
+  color: white;
+  border: 1px solid var(--primary-hover);
+  font-weight: bold;
+}
+
+/* ... existing styles ... */
+
+/* ... existing styles ... */
+
+/* --- ESTILOS DE NAVEGACIÓN Y LAYOUT (FINAL) --- */
+
+/* Contenedor del Navbar Superior (Sticky) */
+.app-navbar-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  background-color: var(--nav-bg);
+  color: var(--text-color);
+  border-bottom: 1px solid var(--card-border);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  transition: all 0.3s ease;
+}
+
+.app-navbar {
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  gap: 15px;
+  min-height: 60px;
+  /* Altura consistente */
+}
+
+/* LOGO */
+.logo-container {
+  color: var(--text-color);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.logo-text-group {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.logo-main {
+  font-size: 1.4rem;
+  font-weight: bold;
+}
+
+.logo-sub {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+/* SEARCH DESKTOP (Por defecto visible, oculto en móvil via media query) */
+.desktop-only-search {
+  flex: 1;
+  max-width: 450px;
+}
+
+.nav-link {
+  color: var(--secondary-color);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+/* BARRA DE BÚSQUEDA MÓVIL (Activa) */
+.mobile-search-bar {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.btn-icon-small {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-color);
+  cursor: pointer;
+  padding: 0 5px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
   }
 
-  a:hover {
-    color: #747bff;
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* MENU DESKTOP */
+.desktop-nav-links {
+  display: flex;
+  gap: 15px;
+}
+
+/* BOTTOM NAVIGATION (MÓVIL) */
+.bottom-nav {
+  display: none;
+  /* Oculto en desktop */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 60px;
+  background-color: var(--card-bg);
+  /* Sólido para tapar contenido */
+  border-top: 1px solid var(--card-border);
+  justify-content: space-around;
+  align-items: center;
+  z-index: 1000;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--secondary-color);
+  text-decoration: none;
+  font-size: 0.75rem;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.bottom-nav-item.active {
+  color: var(--primary-color);
+}
+
+.bottom-icon {
+  font-size: 1.4rem;
+}
+
+/* MENÚ OVERLAY (MÓVIL) */
+.mobile-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2000;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  /* Sale de abajo */
+}
+
+/* Area transparente para cerrar al clickear fuera */
+.close-menu-area {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  border: none;
+  cursor: default;
+}
+
+.mobile-menu-content {
+  position: relative;
+  /* Para ponerlo sobre el area */
+  width: 100%;
+  background-color: var(--card-bg);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease-out;
+  padding-bottom: 80px;
+  /* Espacio para bottom nav */
+}
+
+.mobile-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--card-border);
+  padding-bottom: 10px;
+}
+
+.close-menu-btn-inside {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: var(--text-color);
+  cursor: pointer;
+}
+
+.mobile-menu-item {
+  padding: 15px;
+  font-size: 1.1rem;
+  border-bottom: 1px solid var(--card-border);
+  color: var(--text-color);
+  text-decoration: none;
+  cursor: pointer;
+  display: block;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
   }
 
-  button {
-    background-color: #f9f9f9;
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* BOTÓN FLOTANTE TEMA (DESKTOP) */
+.theme-toggle-desktop {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  font-size: 1.5em;
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  display: flex;
+  /* Default desktop */
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* --- MEDIA QUERIES --- */
+
+/* MÓVILES y TABLETS PEQUEÑAS (< 768px) */
+@media (max-width: 768px) {
+
+  /* Mostrar Bottom Nav en Flex */
+  .bottom-nav {
+    display: flex;
+  }
+
+  /* Ocultar Buscador Desktop en el Header por defecto */
+  .desktop-only-search {
+    display: none;
+  }
+
+  /* Ocultar Botón Tema Flotante (Ya está en el menú) */
+  .theme-toggle-desktop {
+    display: none;
+  }
+
+  /* Ocultar Links Desktop */
+  .desktop-nav-links {
+    display: none;
+  }
+
+  /* Header Simple (Solo Logo centrado o izquierda) */
+  .app-navbar {
+    justify-content: center;
+    /* Logo Centrado estilo App */
+    padding: 10px;
+  }
+
+  /* Ajuste Logo */
+  .logo-container {
+    font-size: 1rem;
+    /* Compacto */
+  }
+
+  .logo-text-group {
+    align-items: center;
+  }
+
+  /* Centrado */
+
+  /* Si el modo búsqueda está activo, el navbar cambia layout a start */
+  .app-navbar:has(.mobile-search-bar) {
+    justify-content: flex-start;
+  }
+
+  /* Input Search Styles Mobile */
+  .input-search {
+    font-size: 16px;
+    /* Evita zoom en iOS */
+  }
+
+  /* No mostrar mobile-menu-btn viejo */
+  .mobile-menu-btn {
+    display: none;
   }
 }
