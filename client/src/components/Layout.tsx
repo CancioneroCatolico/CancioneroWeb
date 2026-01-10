@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useBusqueda } from '../context/BusquedaContext';
 import { useTheme } from '../context/ThemeContext';
@@ -10,39 +10,62 @@ export function Layout() {
     const [menuOpen, setMenuOpen] = useState(false);
     const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
+    // Referencia para scroll top en móvil
+    const topRef = useRef<HTMLDivElement>(null);
+
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!termino.trim()) return;
         navigate(`/buscar?q=${termino}`);
-        setMobileSearchOpen(false); // Cerrar modo búsqueda tras buscar
+        setMobileSearchOpen(false);
         setMenuOpen(false);
     };
 
+    const scrollToTop = () => {
+        if (topRef.current) {
+            topRef.current.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+
     return (
-        <div style={{ paddingBottom: '70px', minHeight: '100vh' }}> {/* Padding extra para la barra inferior */}
-            {/* NAVBAR SUPERIOR */}
+        <div style={{ paddingBottom: '70px', minHeight: '100vh' }} ref={topRef}>
+            {/* NAVBAR SUPERIOR (STICKY) */}
             <nav className="app-navbar-container">
                 <div className="app-navbar">
 
                     {/* MODO BÚSQUEDA MÓVIL ACTIVADO */}
                     {mobileSearchOpen ? (
                         <div className="mobile-search-bar animate-fade-in">
-                            <button
-                                className="btn-icon-small"
-                                onClick={() => setMobileSearchOpen(false)}
-                            >
-                                ←
-                            </button>
-                            <form onSubmit={handleSearchSubmit} style={{ flex: 1 }}>
+                            <form onSubmit={handleSearchSubmit} className="search-form-container">
                                 <input
                                     type="text"
                                     className="input-search"
-                                    placeholder="¿Qué quieres tocar hoy?"
+                                    placeholder="Buscar..."
                                     value={termino}
                                     onChange={(e) => setTermino(e.target.value)}
                                     autoFocus
                                 />
                             </form>
+                            <Link
+                                to="/buscar"
+                                className="btn-icon search-filter-btn"
+                                title="Búsqueda Avanzada"
+                                onClick={() => { setMobileSearchOpen(false); setMenuOpen(false); }}
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="4" y1="21" x2="4" y2="14" />
+                                    <line x1="4" y1="10" x2="4" y2="3" />
+                                    <line x1="12" y1="21" x2="12" y2="12" />
+                                    <line x1="12" y1="8" x2="12" y2="3" />
+                                    <line x1="20" y1="21" x2="20" y2="16" />
+                                    <line x1="20" y1="12" x2="20" y2="3" />
+                                    <line x1="1" y1="14" x2="7" y2="14" />
+                                    <line x1="9" y1="8" x2="15" y2="8" />
+                                    <line x1="17" y1="16" x2="23" y2="16" />
+                                </svg>
+                            </Link>
                         </div>
                     ) : (
                         /* CABECERA NORMAL */
@@ -55,16 +78,35 @@ export function Layout() {
                                 </div>
                             </Link>
 
-                            {/* BUSCADOR DESKTOP (Oculto en móvil por CSS) */}
-                            <form className="nav-search-container desktop-only-search" onSubmit={handleSearchSubmit}>
-                                <input
-                                    type="text"
-                                    className="input-search"
-                                    placeholder="Buscar..."
-                                    value={termino}
-                                    onChange={(e) => setTermino(e.target.value)}
-                                />
-                            </form>
+                            {/* BUSCADOR DESKTOP (Oculto en móvil) */}
+                            <div className="desktop-only-search">
+                                <form className="nav-search-container search-form-container" onSubmit={handleSearchSubmit}>
+                                    <input
+                                        type="text"
+                                        className="input-search"
+                                        placeholder="Buscar..."
+                                        value={termino}
+                                        onChange={(e) => setTermino(e.target.value)}
+                                    />
+                                </form>
+                                <Link
+                                    to="/buscar"
+                                    className="btn-icon search-filter-btn"
+                                    title="Búsqueda Avanzada"
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="4" y1="21" x2="4" y2="14" />
+                                        <line x1="4" y1="10" x2="4" y2="3" />
+                                        <line x1="12" y1="21" x2="12" y2="12" />
+                                        <line x1="12" y1="8" x2="12" y2="3" />
+                                        <line x1="20" y1="21" x2="20" y2="16" />
+                                        <line x1="20" y1="12" x2="20" y2="3" />
+                                        <line x1="1" y1="14" x2="7" y2="14" />
+                                        <line x1="9" y1="8" x2="15" y2="8" />
+                                        <line x1="17" y1="16" x2="23" y2="16" />
+                                    </svg>
+                                </Link>
+                            </div>
 
                             {/* LINKS DESKTOP */}
                             <div className="desktop-nav-links">
@@ -108,9 +150,13 @@ export function Layout() {
                 </Link>
 
                 <button className={`bottom-nav-item ${mobileSearchOpen ? 'active' : ''}`} onClick={() => {
-                    setMobileSearchOpen(true);
-                    setMenuOpen(false);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    if (mobileSearchOpen) {
+                        setMobileSearchOpen(false);
+                    } else {
+                        setMobileSearchOpen(true);
+                        setMenuOpen(false);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
                 }}>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="bottom-icon">
                         <circle cx="11" cy="11" r="8" fill="rgba(66, 153, 225, 0.3)" />

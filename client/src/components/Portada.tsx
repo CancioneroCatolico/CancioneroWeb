@@ -31,7 +31,7 @@ export function Portada() {
                                 <strong style={{ fontSize: '1.1em' }}>{c.titulo}</strong>
                             </div>
                             <div className="text-secondary" style={{ marginTop: '4px', marginLeft: '30px' }}>
-                                {c.autor} <small className="badge" style={{ padding: '2px 6px', borderRadius: '4px' }}>{c.tonoBase}</small>
+                                {c.autor}
                             </div>
                         </div>
 

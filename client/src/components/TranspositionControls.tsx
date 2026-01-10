@@ -63,8 +63,7 @@ export function TranspositionControls({ originalKey, transposition, onTransposit
                 <div style={{
                     position: 'absolute',
                     top: '110%',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
+                    left: '0',
                     backgroundColor: 'var(--card-bg)',
                     border: '1px solid var(--card-border)',
                     borderRadius: '12px',
