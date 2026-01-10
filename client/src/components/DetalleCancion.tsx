@@ -45,8 +45,8 @@ export function DetalleCancion() {
             // Forzamos inicio en 1em para el cálculo si queremos ser estrictos, 
             // o usamos fontSize actual? Mejor resetear aquí para cálculo fresco si cambió modo.
             // Pero como setFontSize(1) ya ocurre en el otro effect, asumimos que empieza ahí.
-            // Mejor leemos el estado actual por si acaso.
-            currentSize = fontSize;
+            // Start calculation from 1.0 to ensure max possible size
+            currentSize = 1.0;
 
             el.style.fontSize = `${currentSize}em`;
 
@@ -65,7 +65,8 @@ export function DetalleCancion() {
         } else {
             // Lógica para Vertical: TAMBIÉN debe ser agresiva para evitar scroll horizontal.
             // Usamos la misma lógica de bucle 'while' para garantizar ajuste.
-            let currentSize = fontSize;
+            // Lógica para Vertical:
+            let currentSize = 1.0;
             el.style.fontSize = `${currentSize}em`;
 
             // Bucle: Mientras haya scroll horizontal (líneas muy largas)
@@ -102,31 +103,16 @@ export function DetalleCancion() {
     // Resetear font size y estado manual al cambiar de modo
     useEffect(() => {
         setUserHasManuallyResized(false); // Reiniciamos flag manual
-        setFontSize(1); // Reiniciamos tamaño base (1em) para intentar el ajuste desde el máximo
     }, [viewMode]);
 
     if (!cancion) return <p>Cargando letra...</p>;
 
     return (
-        <div style={{
-            padding: '20px',
-            margin: '0 auto',
-            display: 'flex',
-            flexDirection: 'column',
-            // Lógica Fullscreen movida al contenedor principal para incluir la Toolbar
-            position: isFullscreen ? 'fixed' : 'relative',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            width: isFullscreen ? '100vw' : '100%',
-            height: isFullscreen ? '100dvh' : 'min-content', // En modo normal crece, en fullscreen fijo
-            minHeight: '100vh',
-            backgroundColor: 'var(--bg-color)', // Asegurar fondo opaco en fullscreen
-            zIndex: isFullscreen ? 9999 : 1,
-            overflow: 'hidden', // Evitar scroll en el wrapper principal, delegar al card
-            maxWidth: isFullscreen ? 'none' : '100%'
-        }}>
+        <div style={{ padding: '20px', maxWidth: '100%', margin: '0 auto', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+            {/* Header y Toolbar (Solo visibles si NO estamos en fullscreen o si decidimos mostrarlos) 
+                El usuario dijo "Pantalla completa es solo letra". Así que ocultamos todo lo demás.
+                Simplemente el Card se pone encima (z-index).
+            */}
             <div style={{ flexShrink: 0 }}>
                 <h1 className="text-primary" style={{ marginBottom: '5px' }}>{cancion.titulo}</h1>
                 <h3 className="text-secondary" style={{ marginTop: '0' }}>{cancion.autor}</h3>
@@ -138,17 +124,14 @@ export function DetalleCancion() {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
-                        flexWrap: 'nowrap', // Forzamos una sola línea
-                        overflowX: 'auto',   // Permitimos scroll si es absolutamente necesario, pero intentaremos shrink
+                        flexWrap: 'nowrap',
+                        overflowX: 'auto',
                         maxWidth: '100%',
-                        height: '44px',      // Altura uniforme forzada
-
-                        // Estilos para que los hijos se encojan
-                        scrollbarWidth: 'none',   // Ocultar scrollbar visualmente si se puede
+                        height: '44px',
+                        scrollbarWidth: 'none',
                         msOverflowStyle: 'none'
                     }}
                 >
-                    {/* Transpose Controls (wrapper to force flex behavior) */}
                     <div style={{ flex: '0 1 auto', minWidth: 'fit-content' }}>
                         <TranspositionControls
                             originalKey={cancion.tonoBase}
@@ -157,20 +140,13 @@ export function DetalleCancion() {
                         />
                     </div>
 
-                    {/* Separador flexible o fijo? Mejor gap. */}
-
-                    {/* View Mode Toggle */}
                     <button
                         className="btn"
                         onClick={() => setViewMode(prev => prev === 'vertical' ? 'columns' : 'vertical')}
                         style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '44px', // Cuadrado base
-                            height: '44px',
-                            padding: 0,
-                            flex: '0 0 44px', // No encoger el icono si es posible, o sí? El usuario dijo "textos se achiquen". Iconos mejor fijos.
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: '44px', height: '44px', padding: 0,
+                            flex: '0 0 44px',
                             border: '1px solid var(--card-border)',
                             backgroundColor: 'transparent',
                             borderRadius: '10px',
@@ -185,13 +161,11 @@ export function DetalleCancion() {
                         )}
                     </button>
 
-                    {/* Zoom Controls */}
                     <div style={{ display: 'flex', gap: '5px', flex: '0 1 auto' }}>
                         <button className="btn" style={{ height: '44px', minWidth: '40px', padding: '0 5px' }} onClick={() => { setFontSize(f => Math.min(f + 0.1, 2)); setUserHasManuallyResized(true); }}>A+</button>
                         <button className="btn" style={{ height: '44px', minWidth: '40px', padding: '0 5px' }} onClick={() => { setFontSize(f => Math.max(f - 0.1, 0.4)); setUserHasManuallyResized(true); }}>A-</button>
                     </div>
 
-                    {/* Fullscreen Button */}
                     <button
                         className="btn"
                         onClick={() => setIsFullscreen(!isFullscreen)}
@@ -199,21 +173,13 @@ export function DetalleCancion() {
                             border: '1px solid var(--card-border)',
                             backgroundColor: isFullscreen ? 'var(--primary-color)' : 'transparent',
                             color: isFullscreen ? 'white' : 'var(--text-color)',
-                            marginLeft: 'auto', // Push to right
-                            height: '44px',
-                            minWidth: '44px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: 0
+                            marginLeft: 'auto',
+                            height: '44px', minWidth: '44px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0
                         }}
-                        title={isFullscreen ? "Salir Fullscreen" : "Fullscreen"}
+                        title="Fullscreen"
                     >
-                        {isFullscreen ? (
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" /></svg>
-                        ) : (
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" /></svg>
-                        )}
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" /></svg>
                     </button>
                 </div>
             </div>
@@ -222,72 +188,55 @@ export function DetalleCancion() {
                 ref={containerRef}
                 className="card"
                 style={{
-                    padding: viewMode === 'columns' ? '10px 40px 10px 20px' : '20px', // Adjusted padding
-                    maxWidth: '100%',
+                    padding: viewMode === 'columns' ? '20px 60px 20px 20px' : '20px',
                     boxSizing: 'border-box',
                     borderRadius: isFullscreen ? '0' : '10px',
                     border: isFullscreen ? 'none' : undefined,
 
-                    // Flex behavior: Fill remaining space
-                    flex: '1 1 auto',
-                    width: '100%', // Ensure it takes full width of flex container
-                    minHeight: 0,  // Critical for flex scrolling
+                    // Fullscreen Overrides
+                    position: isFullscreen ? 'fixed' : 'relative',
+                    top: isFullscreen ? 0 : 'auto',
+                    left: isFullscreen ? 0 : 'auto',
+                    width: isFullscreen ? '100vw' : '100%',
+                    height: (isFullscreen || viewMode === 'columns') ? '100dvh' : 'auto',
+                    zIndex: isFullscreen ? 9999 : 1,
+                    backgroundColor: isFullscreen ? 'var(--bg-color)' : undefined, // Restore bg for FS
+                    maxWidth: isFullscreen ? 'none' : '100%',
 
-                    // Height calculation:
-                    // In Columns mode, we need a specific height for columns to break.
-                    // In Vertical Fullscreen, we want to fill space.
-                    // In Vertical Normal, we want to start auto but can grow?
-                    // Actually, if parent is fixed (fs), '100%' works. 
-                    // If parent is auto (normal), 'auto' works.
-                    height: (viewMode === 'columns' || isFullscreen) ? '100%' : 'auto',
-
-                    // Estilos dinámicos
+                    // Column logic
                     fontSize: `${fontSize}em`,
-
-                    // Columnas
                     columnWidth: viewMode === 'columns' ? '20em' : 'auto',
                     columnGap: '2em',
                     columnFill: 'auto',
 
                     // Scroll & Overflow
                     overflowX: viewMode === 'columns' ? 'auto' : 'visible',
-                    // Vertical: 
-                    // - Columns: hidden (force horizontal).
-                    // - Vertical Fullscreen: 'auto' (internal scroll).
-                    // - Vertical Normal: 'visible' (page scroll).
                     overflowY: viewMode === 'columns' ? 'hidden' : (isFullscreen ? 'auto' : 'visible'),
-
-
-
-
                 }}
             >
-                {/* Botón flotante para salir de Fullscreen */}
+                {/* Floating Exit Button for Fullscreen (Visible only in FS) */}
                 {isFullscreen && (
                     <button
                         onClick={() => setIsFullscreen(false)}
                         style={{
-                            position: 'absolute',
+                            position: 'fixed', // Fixed to viewport
                             top: '20px',
                             right: '20px',
-                            zIndex: 10000,
-                            backgroundColor: 'rgba(0,0,0,0.6)',
+                            zIndex: 10001, // Above card
+                            backgroundColor: 'rgba(0,0,0,0.5)',
                             color: 'white',
                             border: '1px solid rgba(255,255,255,0.3)',
                             borderRadius: '50%',
                             width: '44px',
                             height: '44px',
                             cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '1.2rem',
-                            backdropFilter: 'blur(4px)'
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}
                     >
-                        ✕
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
                     </button>
                 )}
+
 
                 {cancion.letra.map((linea, i) => (
                     <div key={i} style={{ minWidth: '100%' }}>

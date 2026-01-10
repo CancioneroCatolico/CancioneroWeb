@@ -21,14 +21,6 @@ export function Layout() {
         setMenuOpen(false);
     };
 
-    const scrollToTop = () => {
-        if (topRef.current) {
-            topRef.current.scrollIntoView({ behavior: 'smooth' });
-        } else {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    };
-
     return (
         <div style={{ paddingBottom: '70px', minHeight: '100vh' }} ref={topRef}>
             {/* NAVBAR SUPERIOR (STICKY) */}
