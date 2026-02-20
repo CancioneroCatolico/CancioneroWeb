@@ -8,6 +8,10 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'prompt', // Muestra aviso para actualizar
+      devOptions: {
+        enabled: true, // Esto enciende la PWA en tu localhost
+        type: 'module',
+      },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
         name: 'Cancionero San Francisco',
@@ -30,19 +34,20 @@ export default defineConfig({
         ]
       },
       workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'], // Asegura precache de los assets
         runtimeCaching: [
           {
-            // Cambia la ruta según apunte tu hook useCanciones a la API
-            urlPattern: /^https:\/\/cancionero-web-api\.vercel\.app\/api\/canciones/, // Reemplazar con URL real
-            handler: 'NetworkFirst', // NetworkFirst devuelve datos frescos y si estás offline, busca en local
+            // Atrapa cualquier URL que contenga 'canciones' o 'api' en su ruta
+            urlPattern: ({ url }) => url.pathname.includes('/canciones') || url.pathname.includes('/api'),
+            handler: 'NetworkFirst',
             options: {
               cacheName: 'api-canciones-cache',
               expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 * 30 // Cachear 30 días
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 días
               },
               cacheableResponse: {
-                statuses: [0, 200] // Importante para respuestas opacas u OK
+                statuses: [0, 200]
               }
             }
           }
