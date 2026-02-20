@@ -23,19 +23,19 @@ export function Portada() {
 
             <div className="lista">
                 {canciones.map((c) => (
-                    <div key={c._id} className="card" style={{ padding: '15px', marginBottom: '10px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div key={c._id} className="card" style={{ padding: '15px', marginBottom: '10px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
 
-                        <div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <strong className="text-primary" style={{ fontSize: '1.1em' }}>#{c.numeroCancion}</strong>
-                                <strong style={{ fontSize: '1.1em' }}>{c.titulo}</strong>
+                                <strong className="text-primary" style={{ fontSize: '1.1em', flexShrink: 0 }}>#{c.numeroCancion}</strong>
+                                <strong style={{ fontSize: '1.1em', wordBreak: 'break-word' }}>{c.titulo}</strong>
                             </div>
                             <div className="text-secondary" style={{ marginTop: '4px', marginLeft: '30px' }}>
                                 {c.autor}
                             </div>
                         </div>
 
-                        <Link to={`/cancion/${c.numeroCancion}`} className="btn-primary" style={{ padding: '8px 15px', textDecoration: 'none', borderRadius: '20px', fontSize: '0.9em', fontWeight: 'bold' }}>
+                        <Link to={`/cancion/${c.numeroCancion}`} className="btn-primary" style={{ padding: '8px 15px', textDecoration: 'none', borderRadius: '20px', fontSize: '0.9em', fontWeight: 'bold', flexShrink: 0, whiteSpace: 'nowrap' }}>
                             Ver Letra
                         </Link>
                     </div>

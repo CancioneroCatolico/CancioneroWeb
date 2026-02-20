@@ -1,10 +1,12 @@
 import { useState, useRef } from 'react';
-import { Outlet, Link, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useBusqueda } from '../context/BusquedaContext';
 import { useTheme } from '../context/ThemeContext';
+import { ReloadPrompt } from './ReloadPrompt';
 
 export function Layout() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { termino, setTermino } = useBusqueda();
     const { theme, toggleTheme } = useTheme();
     const [menuOpen, setMenuOpen] = useState(false);
@@ -15,8 +17,16 @@ export function Layout() {
 
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!termino.trim()) return;
-        navigate(`/buscar?q=${termino}`);
+
+        if (!termino.trim()) {
+            // Si el buscador está vacío, limpiamos la búsqueda volviendo por defecto a /buscar
+            navigate('/buscar');
+        } else {
+            const params = new URLSearchParams(searchParams);
+            params.set('q', termino);
+            navigate(`/buscar?${params.toString()}`);
+        }
+
         setMobileSearchOpen(false);
         setMenuOpen(false);
     };
@@ -178,6 +188,9 @@ export function Layout() {
             >
                 {theme === 'light' ? '🌙' : '☀️'}
             </button>
+
+            {/* PWA RELOAD PROMPT */}
+            <ReloadPrompt />
         </div>
     );
 }

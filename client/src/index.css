@@ -213,6 +213,11 @@ h6 {
   font-weight: bold;
 }
 
+.chord-block {
+  margin-right: 0.2em;
+  display: inline-block;
+}
+
 /* ... existing styles ... */
 
 /* ... existing styles ... */
@@ -558,4 +563,69 @@ h6 {
   align-items: center !important;
   justify-content: center !important;
   padding: 0 !important;
+}
+
+/* --- ESTILOS COMPONENTE RELOAD PROMPT (PWA) --- */
+.ReloadPrompt-container {
+  padding: 0;
+  margin: 0;
+  width: 0;
+  height: 0;
+}
+
+.ReloadPrompt-toast {
+  position: fixed;
+  right: 0;
+  bottom: 80px; /* Para que quede arriba del bottom nav móvil */
+  margin: 16px;
+  padding: 16px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  z-index: 9999;
+  text-align: left;
+  box-shadow: 0 4px 12px var(--card-shadow);
+  background-color: var(--card-bg);
+  color: var(--text-color);
+  animation: slideUp 0.3s ease-out;
+}
+
+@media (min-width: 768px) {
+  .ReloadPrompt-toast {
+    bottom: 20px;
+  }
+}
+
+.ReloadPrompt-message {
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.ReloadPrompt-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.ReloadPrompt-buttons button {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--card-border);
+  cursor: pointer;
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.ReloadPrompt-buttons button:hover {
+  background-color: var(--button-hover);
+}
+
+.ReloadPrompt-buttons button:first-child:not(:only-child) {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.ReloadPrompt-buttons button:first-child:not(:only-child):hover {
+  background-color: var(--primary-hover);
 }

@@ -1,3 +1,4 @@
+import { useRef, useLayoutEffect } from 'react';
 import { parseLyricsLine } from '../utils/chordParser';
 import { transposeChord } from '../utils/musicTheory';
 
@@ -8,6 +9,7 @@ interface LineaCancionProps {
 
 export function LineaCancion({ line, transposition = 0 }: LineaCancionProps) {
     const segments = parseLyricsLine(line);
+    const lineRef = useRef<HTMLDivElement>(null);
 
     // Si la línea está vacía, renderizamos un espacio para mantener el flow
     if (!line.trim()) {
@@ -27,7 +29,7 @@ export function LineaCancion({ line, transposition = 0 }: LineaCancionProps) {
                 {segments.map((segment, index) => (
                     <div key={index} style={{ marginRight: '1ch' }}>
                         <span
-                            className="text-primary"
+                            className="text-primary chord-block"
                             style={{
                                 fontSize: '0.9em',
                                 fontWeight: 'bold',
@@ -45,79 +47,78 @@ export function LineaCancion({ line, transposition = 0 }: LineaCancionProps) {
     }
 
     // Lógica para líneas mixtas (Letra + Acordes)
-    // Objetivo: Letra continua (sin espacios forzados) y Acordes sin superponerse.
+    // Objetivo: Letra continua (sin separar palabras) y Acordes sin superponerse.
 
-    // Configuramos estimaciones de ancho para evitar colisiones
-    const TEXT_CHAR_WIDTH = 0.65; // Asumimos que el texto es un poco más estrecho (fuente normal)
-    const CHORD_CHAR_WIDTH = 1.0; // Los acordes suelen ser más anchos (negrita) + margen seguridad
-    const CHORD_MIN_GAP = 1.0;    // Espacio mínimo entre acordes en 'ch'
+    // Solucionador de colisiones
+    useLayoutEffect(() => {
+        if (!lineRef.current) return;
 
-    let currentTextPos = 0;
-    let lastChordEndPos = -10; // Valor inicial bajo para no afectar el primero
+        const chords = lineRef.current.querySelectorAll('.chord-float');
+        let lastRight = -1000; // Valor inicial seguro
 
-    const processedSegments = segments.map(segment => {
-        const tChord = segment.chord ? transposeChord(segment.chord, transposition) : null;
-        const textLen = segment.text.length * TEXT_CHAR_WIDTH;
-        const chordLen = tChord ? (tChord.length * CHORD_CHAR_WIDTH) : 0;
+        chords.forEach((chordEl) => {
+            const chord = chordEl as HTMLElement;
+            // Reseteamos el transform por si la pantalla cambió de tamaño
+            chord.style.transform = 'translateX(0px)';
 
-        let leftOffset = 0;
+            const rect = chord.getBoundingClientRect();
+            const currentLeft = rect.left;
 
-        if (tChord) {
-            const idealStart = currentTextPos;
-            const minStart = lastChordEndPos + CHORD_MIN_GAP;
-            const actualStart = Math.max(idealStart, minStart);
-
-            // Calculamos cuánto tenemos que empujar el acorde a la derecha
-            // Si actualStart > idealStart, hay un desplazamiento positivo
-            leftOffset = Math.max(0, actualStart - idealStart);
-
-            lastChordEndPos = actualStart + chordLen;
-        }
-
-        currentTextPos += textLen;
-
-        return {
-            ...segment,
-            tChord,
-            leftOffset
-        };
-    });
+            // Si el acorde actual pisa el espacio del anterior
+            if (currentLeft < lastRight) {
+                const shift = lastRight - currentLeft + 8; // 8px de margen visual
+                chord.style.transform = `translateX(${shift}px)`;
+                // Actualizamos el borde derecho con el nuevo desplazamiento
+                lastRight = currentLeft + shift + rect.width;
+            } else {
+                // No hay colisión, guardamos su borde derecho actual
+                lastRight = currentLeft + rect.width;
+            }
+        });
+    }, [line, transposition]);
 
     return (
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: hasChords ? '8px' : '2px', lineHeight: '1.2', breakInside: 'avoid', pageBreakInside: 'avoid' }}>
-            {processedSegments.map((ps, index) => (
-                <div key={index} style={{ display: 'flex', flexDirection: 'column', position: 'relative', paddingTop: hasChords ? '1.5em' : '0', maxWidth: '100%' }}>
+        <div ref={lineRef} style={{
+            display: 'block',
+            marginBottom: hasChords ? '8px' : '2px',
+            lineHeight: '1.2',
+            paddingTop: hasChords ? '1.5em' : '0',
+            breakInside: 'avoid',
+            pageBreakInside: 'avoid'
+        }}>
+            {segments.map((segment, index) => {
+                const tChord = segment.chord ? transposeChord(segment.chord, transposition) : null;
+                return (
+                    <span key={index} style={{ position: 'relative' }}>
+                        {/* Acorde Flotante */}
+                        {tChord && (
+                            <span
+                                className="chord-float text-primary"
+                                style={{
+                                    position: 'absolute',
+                                    bottom: '100%',
+                                    left: 0,
+                                    whiteSpace: 'nowrap',
+                                    fontSize: '0.9em',
+                                    fontWeight: 'bold',
+                                    // Eliminamos marginRight de chord-block ya que usamos lógica de colisión custom
+                                }}
+                            >
+                                {tChord}
+                            </span>
+                        )}
 
-
-
-                    {/* Acorde Posicionado Absolutamente con Offset calculado */}
-                    {ps.tChord && (
-                        <span
-                            className="text-primary"
-                            style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: `${ps.leftOffset}ch`, // Aplicamos el empuje calculado
-                                fontSize: '0.9em',
-                                fontWeight: 'bold',
-                                whiteSpace: 'pre'
-                            }}
-                        >
-                            {ps.tChord}
+                        {/* Texto normal - fluye naturalmente con otros span adyacentes */}
+                        <span style={{
+                            fontSize: '1.1em',
+                            whiteSpace: 'pre-wrap',
+                            overflowWrap: 'break-word'
+                        }}>
+                            {segment.text}
                         </span>
-                    )}
-
-                    {/* Texto normal - define el flujo */}
-                    <span style={{
-                        fontSize: '1.1em',
-                        whiteSpace: 'pre-wrap', // Permitimos WRAP manteniendo espacios
-                        minHeight: '1.5em',
-                        overflowWrap: 'break-word'
-                    }}>
-                        {ps.text}
                     </span>
-                </div>
-            ))}
+                );
+            })}
         </div>
     );
 }

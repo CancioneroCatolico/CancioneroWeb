@@ -32,47 +32,44 @@ export function getKeyDistance(fromKey: string, toKey: string): number {
 
 /**
  * Transpone una nota musical (ej: "LAm", "DO#7") por un número de semitonos.
- * @param chord La nota o acorde a transponer.
+ * Permite que el acorde contenga texto adicional como "Intro: DO" y transpondrá solo el acorde válido.
+ * @param chordText La nota, acorde o texto a transponer.
  * @param semitones Cantidad de semitonos a mover (puede ser negativo).
  */
-export function transposeChord(chord: string, semitones: number): string {
-    if (semitones === 0) return chord;
+export function transposeChord(chordText: string, semitones: number): string {
+    if (semitones === 0) return chordText;
 
-    // 1. Separar la nota base (ej: "DO#") del resto del acorde (ej: "m7")
-    // Buscamos la nota más larga posible al principio del string que coincida con la escala
-    // Esto es para distinguir "SOL" de "SOL#" correctamente.
-    let root = '';
-    let suffix = '';
+    // Buscamos cualquier palabra que empiece con una nota válida
+    // \b asegura que empezamos en un límite de palabra
+    const regex = /\b(DO|RE|MI|FA|SOL|LA|SI)(#?)([a-zA-Z0-9#\+\-ºø]*)(?:\/(DO|RE|MI|FA|SOL|LA|SI)(#?))?(?=\s|$|[^\w#\+\-ºø/])/g;
 
-    // Intentamos matchear primero notas de 3 caracteres (si hubiera, aunque aca son max 3: SOL#)
-    // Luego 2 (DO#), luego 1 (DO).
-    // Nuestra escala tiene notas de 2 o 3 chars.
+    return chordText.replace(regex, (match, root1, sharp1, suffix, root2, sharp2) => {
+        const lowerSuffix = suffix.toLowerCase();
+        const validSuffixRegex = /^(m|sus\d*|dim|aug|maj\d*|add\d*|min|[\d\+\-ºøb#])*$/;
 
-    // Normalizamos input a mayusculas para la comparacion de nota base, pero conservamos sufijo tal cual?
-    // Mejor asumimos que el acorde viene "Bien" formateado o hacemos case insensitive la busqueda.
+        // Excepción explícita para la palabra "SOLO"
+        if (match === 'SOLO') return match;
 
-    // Una estrategia segura: Iterar la escala ordenada por longitud descendente
-    const sortedScale = [...SCALE].sort((a, b) => b.length - a.length);
+        // Si el sufijo tiene caracteres que no son típicos de acordes (y no es 'M' para mayor)
+        if (suffix && !validSuffixRegex.test(lowerSuffix) && suffix !== 'M') {
+            return match;
+        }
 
-    const foundNote = sortedScale.find(note => chord.toUpperCase().startsWith(note));
+        const transposeNote = (root: string, sharp: string) => {
+            const note = root + (sharp || '');
+            const index = SCALE.indexOf(note);
+            if (index === -1) return note;
 
-    if (!foundNote) {
-        // Si no reconocemos la nota, la devolvemos tal cual (ej: ruidos, pausas)
-        return chord;
-    }
+            let newIndex = (index + semitones) % SCALE.length;
+            if (newIndex < 0) newIndex += SCALE.length;
+            return SCALE[newIndex];
+        };
 
-    root = foundNote;
-    suffix = chord.slice(root.length);
+        let result = transposeNote(root1, sharp1) + suffix;
+        if (root2) {
+            result += '/' + transposeNote(root2, sharp2);
+        }
 
-    // 2. Encontrar índice en la escala
-    const index = SCALE.indexOf(root);
-    if (index === -1) return chord; // Should not happen given logic above
-
-    // 3. Calcular nuevo índice
-    // Usamos módulo positivo para manejar indices negativos
-    let newIndex = (index + semitones) % SCALE.length;
-    if (newIndex < 0) newIndex += SCALE.length;
-
-    // 4. Retornar nueva nota + sufijo original
-    return SCALE[newIndex] + suffix;
+        return result;
+    });
 }

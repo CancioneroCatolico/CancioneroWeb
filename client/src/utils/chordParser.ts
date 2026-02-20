@@ -33,5 +33,12 @@ export function parseLyricsLine(line: string): ChordSegment[] {
         });
     }
 
+    // Agregar un espacio en blanco entre acordes consecutivos para correcta separación visual
+    for (let i = 0; i < segments.length - 1; i++) {
+        if (segments[i].chord !== null && segments[i].text === '' && segments[i + 1].chord !== null) {
+            segments[i].text = ' ';
+        }
+    }
+
     return segments;
 }
