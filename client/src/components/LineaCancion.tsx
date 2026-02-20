@@ -1,4 +1,4 @@
-import { useRef, useLayoutEffect } from 'react';
+import { useRef, useLayoutEffect, Fragment } from 'react';
 import { parseLyricsLine } from '../utils/chordParser';
 import { transposeChord } from '../utils/musicTheory';
 
@@ -55,6 +55,7 @@ export function LineaCancion({ line, transposition = 0 }: LineaCancionProps) {
 
         const chords = lineRef.current.querySelectorAll('.chord-float');
         let lastRight = -1000; // Valor inicial seguro
+        let lastTop = -1000; // Trackear eje Y
 
         chords.forEach((chordEl) => {
             const chord = chordEl as HTMLElement;
@@ -62,6 +63,13 @@ export function LineaCancion({ line, transposition = 0 }: LineaCancionProps) {
             chord.style.transform = 'translateX(0px)';
 
             const rect = chord.getBoundingClientRect();
+
+            // Si la diferencia en top es mayor a 10px, saltó de renglón
+            if (Math.abs(rect.top - lastTop) > 10) {
+                lastRight = -1000; // Resetear empuje
+                lastTop = rect.top;
+            }
+
             const currentLeft = rect.left;
 
             // Si el acorde actual pisa el espacio del anterior
@@ -82,29 +90,44 @@ export function LineaCancion({ line, transposition = 0 }: LineaCancionProps) {
             display: 'block',
             marginBottom: hasChords ? '8px' : '2px',
             lineHeight: '1.2',
-            paddingTop: hasChords ? '1.5em' : '0',
             breakInside: 'avoid',
             pageBreakInside: 'avoid'
         }}>
             {segments.map((segment, index) => {
                 const tChord = segment.chord ? transposeChord(segment.chord, transposition) : null;
+                const startsWithSpace = segment.text.startsWith(' ');
+                const cleanText = startsWithSpace ? segment.text.substring(1) : segment.text;
+
                 return (
-                    <span key={index} style={{ position: 'relative' }}>
-                        {/* Acorde Flotante */}
+                    <Fragment key={index}>
+                        {/* El espacio natural para que fluyan las palabras */}
+                        {startsWithSpace && <span>{' '}</span>}
+
+                        {/* Ancla del acorde: un bloque de ancho 0, pero con altura (2.2em) para
+                            empujar la caja de línea hacia arriba si este texto llega a saltar de renglón */}
                         {tChord && (
                             <span
-                                className="chord-float text-primary"
                                 style={{
-                                    position: 'absolute',
-                                    bottom: '100%',
-                                    left: 0,
-                                    whiteSpace: 'nowrap',
-                                    fontSize: '0.9em',
-                                    fontWeight: 'bold',
-                                    // Eliminamos marginRight de chord-block ya que usamos lógica de colisión custom
+                                    display: 'inline-block',
+                                    position: 'relative',
+                                    width: 0,
+                                    height: '2.2em',
+                                    verticalAlign: 'baseline'
                                 }}
                             >
-                                {tChord}
+                                <span
+                                    className="chord-float text-primary"
+                                    style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: 0,
+                                        whiteSpace: 'nowrap',
+                                        fontSize: '0.9em',
+                                        fontWeight: 'bold',
+                                    }}
+                                >
+                                    {tChord}
+                                </span>
                             </span>
                         )}
 
@@ -114,9 +137,9 @@ export function LineaCancion({ line, transposition = 0 }: LineaCancionProps) {
                             whiteSpace: 'pre-wrap',
                             overflowWrap: 'break-word'
                         }}>
-                            {segment.text}
+                            {cleanText}
                         </span>
-                    </span>
+                    </Fragment>
                 );
             })}
         </div>
