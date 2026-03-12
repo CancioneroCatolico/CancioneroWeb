@@ -204,10 +204,12 @@ export function DetalleCancion() {
                     maxWidth: isFullscreen ? 'none' : '100%',
 
                     // Column logic
-                    fontSize: `${fontSize}em`,
-                    columnWidth: viewMode === 'columns' ? '20em' : 'auto',
+                    display: viewMode === 'columns' ? 'flex' : 'block',
+                    flexDirection: viewMode === 'columns' ? 'column' : undefined,
+                    flexWrap: viewMode === 'columns' ? 'wrap' : undefined,
+                    alignContent: viewMode === 'columns' ? 'flex-start' : undefined,
                     columnGap: '2em',
-                    columnFill: 'auto',
+                    fontSize: `${fontSize}em`,
 
                     // Scroll & Overflow
                     overflowX: viewMode === 'columns' ? 'auto' : 'visible',
@@ -239,7 +241,7 @@ export function DetalleCancion() {
 
 
                 {cancion.letra.map((linea, i) => (
-                    <div key={i} style={{ minWidth: '100%' }}>
+                    <div key={i} style={{ width: 'max-content', whiteSpace: 'nowrap' }}>
                         <LineaCancion
                             line={linea}
                             transposition={transposition}

@@ -134,8 +134,7 @@ export function LineaCancion({ line, transposition = 0 }: LineaCancionProps) {
                         {/* Texto normal - fluye naturalmente con otros span adyacentes */}
                         <span style={{
                             fontSize: '1.1em',
-                            whiteSpace: 'pre-wrap',
-                            overflowWrap: 'break-word'
+                            whiteSpace: 'nowrap'
                         }}>
                             {cleanText}
                         </span>
