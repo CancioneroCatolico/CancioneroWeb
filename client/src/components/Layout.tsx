@@ -2,7 +2,6 @@ import { useState, useRef } from 'react';
 import { Outlet, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useBusqueda } from '../context/BusquedaContext';
 import { useTheme } from '../context/ThemeContext';
-import { ReloadPrompt } from './ReloadPrompt';
 
 export function Layout() {
     const navigate = useNavigate();
@@ -188,9 +187,6 @@ export function Layout() {
             >
                 {theme === 'light' ? '🌙' : '☀️'}
             </button>
-
-            {/* PWA RELOAD PROMPT */}
-            <ReloadPrompt />
         </div>
     );
 }

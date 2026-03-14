@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt', // Muestra aviso para actualizar
+      registerType: 'autoUpdate', // Actualiza de fondo sin preguntar
       devOptions: {
         enabled: true, // Esto enciende la PWA en tu localhost
         type: 'module',
