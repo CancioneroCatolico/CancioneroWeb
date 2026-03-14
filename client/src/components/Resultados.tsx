@@ -4,8 +4,22 @@ import { useCanciones } from '../hooks/useCanciones';
 import { useBusqueda } from '../context/BusquedaContext';
 import type { Cancion } from '../types';
 
-const normalizar = (str: string) =>
-    str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : '';
+const limpiarAcordes = (texto: string) => {
+    return texto.replace(/\[.*?\]/g, '');
+};
+
+const normalizar = (str: string) => {
+    if (!str) return '';
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+};
+
+const normalizarLetra = (str: string) => {
+    if (!str) return '';
+    // Primero, llamamos a la normalización estándar (sin tildes, a minúsculas, sin acordes)
+    const normalized = normalizar(limpiarAcordes(str));
+    // Luego, quitamos caracteres de puntuación comunes para que "corrido," haga match con "corrido"
+    return normalized.replace(/[.,!?;:()""''-]/g, '');
+};
 
 export function Resultados() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -84,7 +98,7 @@ export function Resultados() {
                             (c.numeroCancion?.toString().includes(busquedaNormalizada) ?? false);
                     } else if (tipoBusqueda === 'Letra') {
                         const letraStr = c.letra ? c.letra.join(' ') : '';
-                        coincideTexto = normalizar(letraStr).includes(busquedaNormalizada);
+                        coincideTexto = normalizarLetra(letraStr).includes(busquedaNormalizada);
                     }
                 } else {
                     // Si el buscador de texto está vacío, no mostraremos ninguna canción por coincidencia de texto
