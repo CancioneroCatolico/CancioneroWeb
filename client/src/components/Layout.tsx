@@ -109,9 +109,24 @@ export function Layout() {
                                 </Link>
                             </div>
 
-                            {/* LINKS DESKTOP */}
-                            <div className="desktop-nav-links">
-                                <Link to="/" className="nav-link">Inicio</Link>
+                            {/* MENU DESKTOP */}
+                            <div className="desktop-nav-links" style={{position: 'relative'}}>
+                                <button className="btn-icon" onClick={() => setMenuOpen(!menuOpen)} title="Menú">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                                    </svg>
+                                </button>
+                                
+                                {/* Desktop Dropdown Menu */}
+                                {menuOpen && (
+                                    <div className="desktop-dropdown-menu desktop-only-flex">
+                                        <Link to="/" className="desktop-dropdown-item" onClick={() => setMenuOpen(false)}>Inicio</Link>
+                                        <Link to="/mis-listas" className="desktop-dropdown-item" onClick={() => setMenuOpen(false)}>Mis Listas</Link>
+                                        {/* El botón de Tema ya está visible como FAB en Desktop, acorde al requierimiento */}
+                                    </div>
+                                )}
                             </div>
                         </>
                     )}
@@ -125,14 +140,19 @@ export function Layout() {
 
             {/* MENU MÓVIL OVERLAY */}
             {menuOpen && (
-                <div className="mobile-menu-overlay">
+                <div className="mobile-menu-overlay mobile-only-flex">
                     <button className="close-menu-area" onClick={() => setMenuOpen(false)} aria-label="Cerrar menú"></button>
                     <div className="mobile-menu-content">
                         <div className="mobile-menu-header">
                             <h2>Menú</h2>
                             <button className="close-menu-btn-inside" onClick={() => setMenuOpen(false)}>✕</button>
                         </div>
-                        {/* Inicio removido */}
+                        <Link to="/" className="mobile-menu-item" onClick={() => setMenuOpen(false)}>
+                            Inicio
+                        </Link>
+                        <Link to="/mis-listas" className="mobile-menu-item" onClick={() => setMenuOpen(false)}>
+                            Mis Listas
+                        </Link>
                         <div className="mobile-menu-item" onClick={toggleTheme}>
                             {theme === 'light' ? '🌙 Modo Oscuro' : '☀️ Modo Claro'}
                         </div>
@@ -148,6 +168,18 @@ export function Layout() {
                         <polyline points="9 22 9 12 15 12 15 22" />
                     </svg>
                     <span className="bottom-label">Inicio</span>
+                </Link>
+
+                <Link to="/mis-listas" className="bottom-nav-item" onClick={() => { setMenuOpen(false); setMobileSearchOpen(false); }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="bottom-icon">
+                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                    </svg>
+                    <span className="bottom-label">Mis Listas</span>
                 </Link>
 
                 <button className={`bottom-nav-item ${mobileSearchOpen ? 'active' : ''}`} onClick={() => {

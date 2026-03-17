@@ -3,6 +3,7 @@ import { Layout } from './components/Layout'
 import { Portada } from './components/Portada'
 import { Resultados } from './components/Resultados'
 import { DetalleCancion } from './components/DetalleCancion'
+import { MisListas } from './components/MisListas'
 // IMPORTAMOS EL PROVIDER
 import { BusquedaProvider } from './context/BusquedaContext'
 
@@ -19,6 +20,7 @@ function App() {
               <Route index element={<Portada />} />
               <Route path="buscar" element={<Resultados />} />
               <Route path="cancion/:id" element={<DetalleCancion />} />
+              <Route path="mis-listas" element={<MisListas />} />
             </Route>
           </Routes>
         </BrowserRouter>
