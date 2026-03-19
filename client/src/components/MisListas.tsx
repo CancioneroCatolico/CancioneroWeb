@@ -26,29 +26,23 @@ interface ListaItem {
 }
 
 // Funciones Auxiliares Búsqueda
-const limpiarAcordes = (texto: string) => {
-    return texto.replace(/\[.*?\]/g, '');
-};
-
 const normalizar = (str: string) => {
     if (!str) return '';
     return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 };
 
-const normalizarLetra = (str: string) => {
-    if (!str) return '';
-    const normalized = normalizar(limpiarAcordes(str));
-    return normalized.replace(/[.,!?;:()""''-]/g, '');
-};
 
 export function MisListas() {
     const { canciones: cancionesOficiales } = useCanciones();
-    const [vista, setVista] = useState<'dashboard' | 'editor' | 'live'>('dashboard');
-    const [listaActivaId, setListaActivaId] = useState<number | string | null>(null);
-    const [menuAbiertoId, setMenuAbiertoId] = useState<number | string | null>(null);
+    const [searchParams, setSearchParams] = useSearchParams();
     
-    // URL Routing parameters para Auto-Importar por QR
-    const [searchParams] = useSearchParams();
+    const vistaParam = searchParams.get('vista') as 'dashboard' | 'editor' | 'live' | null;
+    const listaParam = searchParams.get('lista');
+    
+    const vista = vistaParam || 'dashboard';
+    const listaActivaId = listaParam ? (isNaN(Number(listaParam)) ? listaParam : Number(listaParam)) : null;
+
+    const [menuAbiertoId, setMenuAbiertoId] = useState<number | string | null>(null);
     const navigate = useNavigate();
 
     // Export/Import/QR features
@@ -90,12 +84,11 @@ export function MisListas() {
     // Resetear a dashboard si tocan el botón principal de 'Mis Listas'
     useEffect(() => {
         const handleReset = () => {
-            setVista('dashboard');
-            setListaActivaId(null);
+            setSearchParams({});
         };
         window.addEventListener('reset-mis-listas', handleReset);
         return () => window.removeEventListener('reset-mis-listas', handleReset);
-    }, []);
+    }, [setSearchParams]);
 
     // Efecto para guardar en localStorage cada vez que cambien las listas
     useEffect(() => {
@@ -456,20 +449,15 @@ export function MisListas() {
     // Filtrado de Búsqueda
     const searchResultados = searchQuery.trim() === '' ? [] : cancionesOficiales.filter(c => {
         const busquedaNormalizada = normalizar(searchQuery);
-        const coincideTitulo = normalizar(c.titulo).includes(busquedaNormalizada);
-        const letraStr = c.letra ? c.letra.join(' ') : '';
-        const coincideLetra = normalizarLetra(letraStr).includes(busquedaNormalizada);
-        return coincideTitulo || coincideLetra;
-    }).slice(0, 20); // Limitar a los primeros 20 para no saturar
+        return normalizar(c.titulo).includes(busquedaNormalizada);
+    }); // Sin límite para que aparezcan todas y solo busca en título
 
     const handleAbrirLista = (id: number | string) => {
-        setListaActivaId(id);
-        setVista('editor');
+        setSearchParams({ lista: id.toString(), vista: 'editor' });
     };
 
     const handleVolver = () => {
-        setVista('dashboard');
-        setListaActivaId(null);
+        setSearchParams({});
     };
 
     const renderDashboard = () => (
@@ -614,7 +602,7 @@ export function MisListas() {
                         onClick={() => {
                             if (listaActiva && listaActiva.canciones.length > 0) {
                                 setCurrentSongIndex(0);
-                                setVista('live');
+                                setSearchParams({ lista: listaActiva.id.toString(), vista: 'live' });
                             }
                         }}
                         disabled={!listaActiva || listaActiva.canciones.length === 0}
@@ -669,8 +657,11 @@ export function MisListas() {
                             <Droppable droppableId="lista-canciones">
                                 {(provided) => (
                                     <div {...provided.droppableProps} ref={provided.innerRef}>
-                                        {listaActiva?.canciones.map((cancion, index) => (
-                                            <Draggable key={cancion.idUnicoEnLista} draggableId={cancion.idUnicoEnLista.toString()} index={index}>
+                                        {listaActiva?.canciones.map((cancion, index) => {
+                                            const matchOficial = cancionesOficiales.find(c => (c.numeroCancion || (c as any)._id) === cancion.idCancion);
+                                            const prefix = matchOficial?.numeroCancion ? `${matchOficial.numeroCancion}. ` : '';
+                                            return (
+                                                <Draggable key={cancion.idUnicoEnLista} draggableId={cancion.idUnicoEnLista.toString()} index={index}>
                                                 {(provided) => (
                                                     <div
                                                         className="song-item card"
@@ -692,7 +683,7 @@ export function MisListas() {
                                                                     <line x1="3" y1="18" x2="3.01" y2="18"></line>
                                                                 </svg>
                                                             </span>
-                                                            <span className="song-item-title">{cancion.titulo}</span>
+                                                            <span className="song-item-title">{prefix}{cancion.titulo}</span>
                                                         </div>
                                                         <div className="song-item-right" style={{ gap: '12px' }}>
                                                             <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -728,7 +719,8 @@ export function MisListas() {
                                                     </div>
                                                 )}
                                             </Draggable>
-                                        ))}
+                                            );
+                                        })}
                                         {provided.placeholder}
                                     </div>
                                 )}
@@ -750,6 +742,7 @@ export function MisListas() {
 
         const cancionActiva = listaActiva.canciones[currentSongIndex];
         const cancionOficial = cancionesOficiales.find(c => (c.numeroCancion || (c as any)._id) === cancionActiva.idCancion);
+        const prefix = cancionOficial?.numeroCancion ? `${cancionOficial.numeroCancion}. ` : '';
 
         const wakeUpHeader = () => setIsHeaderVisible(true);
 
@@ -759,7 +752,7 @@ export function MisListas() {
                     <p style={{ color: 'var(--text-color)' }}>Error: No se pudo cargar la letra de esta canción.</p>
                     <button className="btn btn-primary" onClick={() => {
                         handleNextSong(); // Intentar saltar a la siguiente si esta falla
-                        if (currentSongIndex >= listaActiva.canciones.length - 1) setVista('editor');
+                        if (currentSongIndex >= listaActiva.canciones.length - 1) setSearchParams({ lista: listaActiva.id.toString(), vista: 'editor' });
                     }} style={{ marginTop: '20px' }}>Saltar o Volver al Editor</button>
                 </div>
             );
@@ -789,13 +782,13 @@ export function MisListas() {
                     transition: 'opacity 0.4s ease',
                     pointerEvents: isHeaderVisible ? 'auto' : 'none'
                 }}>
-                    <button className="btn-icon-small" onClick={() => setVista('editor')} title="Salir del Modo Atril" style={{ opacity: 0.8, color: 'white' }}>
+                    <button className="btn-icon-small" onClick={() => setSearchParams({ lista: listaActiva.id.toString(), vista: 'editor' })} title="Salir del Modo Atril" style={{ opacity: 0.8, color: 'white' }}>
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
                     </button>
-                    <h2 className="live-mode-title" style={{ color: 'white', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{cancionActiva.titulo}</h2>
+                    <h2 className="live-mode-title" style={{ color: 'white', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{prefix}{cancionActiva.titulo}</h2>
                     <div style={{ width: '36px', textAlign: 'center', color: '#ccc', fontSize: '0.9rem' }}>
                         {currentSongIndex + 1}/{listaActiva.canciones.length}
                     </div>
