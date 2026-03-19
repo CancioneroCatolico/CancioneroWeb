@@ -1,0 +1,26 @@
+[
+  {
+    "id": "ejemplo-lista-custom-123",
+    "nombre": "Ejemplo con Canción Custom",
+    "canciones": [
+      {
+        "idUnicoEnLista": "cancion-unica-456",
+        "tipo": "custom",
+        "idCancion": "id-ficticio-001",
+        "titulo": "Mi Canción Inventada",
+        "tonoElegido": "DO",
+        "tonoBase": "DO",
+        "autor": "Comunidad Local",
+        "letra": [
+          "[DO]Esta es una canción que solo vive en este archivo JSON.",
+          "Fijate que los acordes van siempre entre [FA]corchetes cuadrados.",
+          "Y el motor de la app los procesará [SOL]automáticamente.",
+          "",
+          "[LAm]Podés saltar de renglón dejando un elemento vacío en el array.",
+          "Acordate que el [DO]tonoBase sirve para que funcione el transpondedor (+ y -).",
+          "Si no le ponés tonoBase, la línea se renderizará tal cual la [SOL]escribas acá."
+        ]
+      }
+    ]
+  }
+]

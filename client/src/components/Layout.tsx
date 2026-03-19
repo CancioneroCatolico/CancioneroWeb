@@ -123,7 +123,7 @@ export function Layout() {
                                 {menuOpen && (
                                     <div className="desktop-dropdown-menu desktop-only-flex">
                                         <Link to="/" className="desktop-dropdown-item" onClick={() => setMenuOpen(false)}>Inicio</Link>
-                                        <Link to="/mis-listas" className="desktop-dropdown-item" onClick={() => setMenuOpen(false)}>Mis Listas</Link>
+                                        <Link to="/mis-listas" className="desktop-dropdown-item" onClick={() => { setMenuOpen(false); window.dispatchEvent(new CustomEvent('reset-mis-listas')); }}>Mis Listas</Link>
                                         {/* El botón de Tema ya está visible como FAB en Desktop, acorde al requierimiento */}
                                     </div>
                                 )}
@@ -150,7 +150,7 @@ export function Layout() {
                         <Link to="/" className="mobile-menu-item" onClick={() => setMenuOpen(false)}>
                             Inicio
                         </Link>
-                        <Link to="/mis-listas" className="mobile-menu-item" onClick={() => setMenuOpen(false)}>
+                        <Link to="/mis-listas" className="mobile-menu-item" onClick={() => { setMenuOpen(false); window.dispatchEvent(new CustomEvent('reset-mis-listas')); }}>
                             Mis Listas
                         </Link>
                         <div className="mobile-menu-item" onClick={toggleTheme}>
@@ -170,7 +170,7 @@ export function Layout() {
                     <span className="bottom-label">Inicio</span>
                 </Link>
 
-                <Link to="/mis-listas" className="bottom-nav-item" onClick={() => { setMenuOpen(false); setMobileSearchOpen(false); }}>
+                <Link to="/mis-listas" className="bottom-nav-item" onClick={() => { setMenuOpen(false); setMobileSearchOpen(false); window.dispatchEvent(new CustomEvent('reset-mis-listas')); }}>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="bottom-icon">
                         <line x1="8" y1="6" x2="21" y2="6"></line>
                         <line x1="8" y1="12" x2="21" y2="12"></line>

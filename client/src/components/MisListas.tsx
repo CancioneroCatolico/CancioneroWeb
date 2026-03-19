@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
+import { QRCodeSVG } from 'qrcode.react';
+import LZString from 'lz-string';
 import { useCanciones } from '../hooks/useCanciones';
 import { transposeChord, getKeyDistance } from '../utils/musicTheory';
 import { TranspositionControls } from './TranspositionControls';
@@ -8,9 +11,18 @@ import { LineaCancion } from './LineaCancion';
 
 // Interfaz para la lista
 interface ListaItem {
-    id: number;
+    id: number | string;
     nombre: string;
-    canciones: { idUnicoEnLista: number, tipo: string, idCancion: number, titulo: string, tonoElegido: string, tonoBase?: string }[];
+    canciones: { 
+        idUnicoEnLista: number | string, 
+        tipo: string, 
+        idCancion: number | string, 
+        titulo: string, 
+        tonoElegido: string, 
+        tonoBase?: string,
+        letra?: string[],   // Para export/import de canciones custom sin conexión a MongoDB
+        autor?: string
+    }[];
 }
 
 // Funciones Auxiliares Búsqueda
@@ -32,8 +44,22 @@ const normalizarLetra = (str: string) => {
 export function MisListas() {
     const { canciones: cancionesOficiales } = useCanciones();
     const [vista, setVista] = useState<'dashboard' | 'editor' | 'live'>('dashboard');
-    const [listaActivaId, setListaActivaId] = useState<number | null>(null);
-    const [menuAbiertoId, setMenuAbiertoId] = useState<number | null>(null);
+    const [listaActivaId, setListaActivaId] = useState<number | string | null>(null);
+    const [menuAbiertoId, setMenuAbiertoId] = useState<number | string | null>(null);
+    
+    // URL Routing parameters para Auto-Importar por QR
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+
+    // Export/Import/QR features
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+    const [qrUrl, setQrUrl] = useState('');
+    const [isQrTooDense, setIsQrTooDense] = useState(false);
+    
+    // Import Message Modal states
+    const [importMessage, setImportMessage] = useState<{ title: string, text: string, isError?: boolean } | null>(null);
+    const [isCopied, setIsCopied] = useState(false);
 
     // Live Mode states
     const [currentSongIndex, setCurrentSongIndex] = useState(0);
@@ -43,7 +69,7 @@ export function MisListas() {
     // Estados para Modales
     const [isNameModalOpen, setIsNameModalOpen] = useState(false);
     const [newListName, setNewListName] = useState('');
-    const [listToDelete, setListToDelete] = useState<{ id: number, nombre: string } | null>(null);
+    const [listToDelete, setListToDelete] = useState<{ id: number | string, nombre: string } | null>(null);
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -61,6 +87,16 @@ export function MisListas() {
         return [];
     });
 
+    // Resetear a dashboard si tocan el botón principal de 'Mis Listas'
+    useEffect(() => {
+        const handleReset = () => {
+            setVista('dashboard');
+            setListaActivaId(null);
+        };
+        window.addEventListener('reset-mis-listas', handleReset);
+        return () => window.removeEventListener('reset-mis-listas', handleReset);
+    }, []);
+
     // Efecto para guardar en localStorage cada vez que cambien las listas
     useEffect(() => {
         localStorage.setItem('cancionero_listas', JSON.stringify(listas));
@@ -69,7 +105,11 @@ export function MisListas() {
     // Live Mode Top-level calculations for Hooks (Must be after 'listas' declaration)
     const listaActivaGlobal = listas.find(l => l.id === listaActivaId);
     const cancionActivaGlobal = listaActivaGlobal?.canciones[currentSongIndex];
-    const cancionOficialGlobal = cancionActivaGlobal ? cancionesOficiales.find(c => (c.numeroCancion || (c as any)._id) === cancionActivaGlobal.idCancion) : null;
+    
+    // Si no está en oficiales, puede ser una canción exportada externa o custom que tiene letra incrustada
+    const cancionOficialGlobal = cancionActivaGlobal ? 
+        (cancionesOficiales.find(c => (c.numeroCancion || (c as any)._id) === cancionActivaGlobal.idCancion) || (cancionActivaGlobal.letra ? cancionActivaGlobal : null))
+        : null;
 
     // --- ESCALADO DE FONT SIZE EN LIVE MODE ---
     // Estrategia: UNO PASO POR RENDER.
@@ -161,8 +201,34 @@ export function MisListas() {
         };
     }, [vista]);
 
-
-
+    // QR Import Auto-Detection
+    useEffect(() => {
+        const importParam = searchParams.get('import');
+        if (importParam) {
+            try {
+                const jsonStr = LZString.decompressFromEncodedURIComponent(importParam);
+                if (jsonStr) {
+                    const parsed = JSON.parse(jsonStr);
+                    if (parsed && typeof parsed === 'object') {
+                        const nuevaLista: ListaItem = {
+                            ...parsed,
+                            id: crypto.randomUUID ? crypto.randomUUID() : Date.now() + Math.random(),
+                            canciones: (parsed.canciones || []).map((c: any) => ({
+                                ...c,
+                                idUnicoEnLista: crypto.randomUUID ? crypto.randomUUID() : Date.now() + Math.random()
+                            }))
+                        };
+                        setListas(prev => [...prev, nuevaLista]);
+                        setImportMessage({ title: "Lista Importada", text: `La lista "${nuevaLista.nombre}" se importó correctamente.` });
+                    }
+                }
+            } catch (err) {
+                console.error("Error al importar desde QR", err);
+                setImportMessage({ title: "Archivo Inválido", text: "El enlace o código escaneado es inválido o corrupto.", isError: true });
+            }
+            navigate('/mis-listas', { replace: true });
+        }
+    }, [searchParams, navigate]);
 
     // Funciones Modal Nueva Lista
     const handleAbrirCrearLista = () => {
@@ -188,8 +254,91 @@ export function MisListas() {
         setNewListName('');
     };
 
+    // Funciones Importar/Exportar
+    const handleExportarListas = (id: number | string) => {
+        const lista = listas.find(l => l.id === id);
+        if (!lista) return;
+
+        const dataStr = JSON.stringify([lista], null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `cancionero_${lista.nombre.replace(/\s+/g, '_').toLowerCase()}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    const handleImportarListas = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const content = e.target?.result as string;
+                const importedListas: any[] = JSON.parse(content);
+
+                if (!Array.isArray(importedListas)) {
+                    setImportMessage({ title: "Formato Incorrecto", text: "El archivo no tiene un formato válido (debe ser un array JSON).", isError: true });
+                    return;
+                }
+
+                const listasProcesadas: ListaItem[] = importedListas.map(lista => ({
+                    ...lista,
+                    id: crypto.randomUUID ? crypto.randomUUID() : (Date.now() + Math.random().toString()),
+                    canciones: (lista.canciones || []).map((c: any) => ({
+                        ...c,
+                        idUnicoEnLista: crypto.randomUUID ? crypto.randomUUID() : (Date.now() + Math.random().toString())
+                    }))
+                }));
+
+                setListas(prev => [...prev, ...listasProcesadas]);
+                setImportMessage({ title: "Importación Exitosa", text: `Se han importado ${listasProcesadas.length} listas correctamente.` });
+            } catch (error) {
+                console.error("Error validando JSON:", error);
+                setImportMessage({ title: "Archivo Inválido", text: "Hubo un error al leer el archivo. Verifica que el JSON sea válido.", isError: true });
+            }
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        };
+        reader.readAsText(file);
+    };
+
+    const handleCompartirQR = () => {
+        const listaActiva = listas.find(l => l.id === listaActivaId);
+        if (!listaActiva) return;
+
+        const payload: Partial<ListaItem> = {
+            nombre: listaActiva.nombre,
+            canciones: listaActiva.canciones.map(c => {
+                const esOficial = cancionesOficiales.some(oficial => (oficial.numeroCancion || (oficial as any)._id) === c.idCancion);
+                if (esOficial) {
+                    const { letra, autor, ...rest } = c;
+                    return rest as any;
+                }
+                return c;
+            })
+        };
+
+        const jsonStr = JSON.stringify(payload);
+        const compressed = LZString.compressToEncodedURIComponent(jsonStr);
+        const url = `${window.location.origin}/mis-listas?import=${compressed}`;
+        
+        if (url.length > 1500) {
+            setIsQrTooDense(true);
+        } else {
+            setIsQrTooDense(false);
+        }
+        
+        setQrUrl(url);
+        setIsCopied(false);
+        setIsQRModalOpen(true);
+    };
+
     // Funciones Modal Eliminar Lista
-    const handleAbrirEliminarLista = (id: number, nombre: string) => {
+    const handleAbrirEliminarLista = (id: number | string, nombre: string) => {
         setListToDelete({ id, nombre });
     };
 
@@ -240,7 +389,7 @@ export function MisListas() {
         handleCerrarBuscador();
     };
 
-    const handleEliminarCancion = (idUnicoEnLista: number) => {
+    const handleEliminarCancion = (idUnicoEnLista: number | string) => {
         if (!listaActivaId) return;
         setListas(prev => prev.map(lista => {
             if (lista.id === listaActivaId) {
@@ -250,7 +399,7 @@ export function MisListas() {
         }));
     };
 
-    const handleTransponerCancion = (idUnicoEnLista: number, semitones: number, absoluteReset: boolean = false) => {
+    const handleTransponerCancion = (idUnicoEnLista: number | string, semitones: number, absoluteReset: boolean = false) => {
         if (!listaActivaId) return;
         setListas(prev => prev.map(lista => {
             if (lista.id === listaActivaId) {
@@ -313,7 +462,7 @@ export function MisListas() {
         return coincideTitulo || coincideLetra;
     }).slice(0, 20); // Limitar a los primeros 20 para no saturar
 
-    const handleAbrirLista = (id: number) => {
+    const handleAbrirLista = (id: number | string) => {
         setListaActivaId(id);
         setVista('editor');
     };
@@ -327,12 +476,28 @@ export function MisListas() {
         <div className="lists-dashboard animate-fade-in">
             <div className="lists-header">
                 <h2>Mis Listas</h2>
-                <button className="btn btn-secondary desktop-only-flex" style={{ padding: '10px' }} title="Nueva Lista" onClick={handleAbrirCrearLista}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <input 
+                        type="file" 
+                        accept=".json" 
+                        ref={fileInputRef} 
+                        style={{ display: 'none' }} 
+                        onChange={handleImportarListas} 
+                    />
+                    <button className="btn btn-secondary" style={{ padding: '10px' }} title="Importar Lista (JSON)" onClick={() => fileInputRef.current?.click()}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                    </button>
+                    <button className="btn btn-secondary desktop-only-flex" style={{ padding: '10px' }} title="Nueva Lista" onClick={handleAbrirCrearLista}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+                </div>
                 <button className="btn btn-primary btn-fab mobile-only-flex" style={{ bottom: '80px', right: '20px' }} onClick={handleAbrirCrearLista}>
                     <span className="fab-icon" style={{ display: 'block' }}>+</span>
                     <span className="fab-text">Nueva Lista</span>
@@ -384,6 +549,22 @@ export function MisListas() {
                                         boxShadow: '0 4px 12px var(--card-shadow)',
                                         minWidth: '120px'
                                     }}>
+                                        <button
+                                            className="btn-icon-small"
+                                            style={{ width: '100%', justifyContent: 'flex-start', padding: '8px 12px', borderRadius: '4px', fontSize: '14px', textAlign: 'left', marginBottom: '4px' }}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setMenuAbiertoId(null);
+                                                handleExportarListas(lista.id);
+                                            }}
+                                        >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', display: 'inline-block' }}>
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                <polyline points="17 8 12 3 7 8"></polyline>
+                                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                                            </svg>
+                                            Exportar
+                                        </button>
                                         <button
                                             className="btn-icon-small"
                                             style={{ color: '#ef4444', width: '100%', justifyContent: 'flex-start', padding: '8px 12px', borderRadius: '4px', fontSize: '14px', textAlign: 'left' }}
@@ -450,7 +631,7 @@ export function MisListas() {
                                 <line x1="5" y1="12" x2="19" y2="12"></line>
                             </svg>
                         </button>
-                        <button className="btn btn-secondary">
+                        <button className="btn btn-secondary" onClick={handleCompartirQR}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <rect width="5" height="5" x="3" y="3" rx="1"></rect>
                                 <rect width="5" height="5" x="16" y="3" rx="1"></rect>
@@ -467,7 +648,7 @@ export function MisListas() {
                             </svg>
                             Compartir QR
                         </button>
-                        <button className="btn btn-secondary">
+                        <button className="btn btn-secondary" onClick={() => listaActivaId && handleExportarListas(listaActivaId)}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                 <polyline points="17 8 12 3 7 8"></polyline>
@@ -773,6 +954,58 @@ export function MisListas() {
                                     </div>
                                 ))
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Mensajes Importación */}
+            {importMessage && (
+                <div className="modal-overlay">
+                    <div className="modal-content animate-fade-in" style={{ alignItems: 'center', maxWidth: '400px' }}>
+                        <h3 className="modal-title" style={{ color: importMessage.isError ? '#ef4444' : 'var(--text-color)', marginBottom: '16px' }}>{importMessage.title}</h3>
+                        <p style={{ textAlign: 'center', marginBottom: '24px', color: 'var(--secondary-color)', fontSize: '0.95rem' }}>{importMessage.text}</p>
+                        <div className="modal-actions" style={{ width: '100%', justifyContent: 'center' }}>
+                            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setImportMessage(null)}>Aceptar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Compartir QR */}
+            {isQRModalOpen && (
+                <div className="modal-overlay">
+                    <div className="modal-content animate-fade-in" style={{ alignItems: 'center' }}>
+                        <h3 className="modal-title">Compartir Lista</h3>
+                        {isQrTooDense ? (
+                            <p style={{ color: '#ef4444', fontSize: '0.9rem', textAlign: 'center', marginBottom: '16px', fontWeight: 'bold' }}>
+                                No es posible generar el QR porque es muy denso. Mejor usa la opción de 'Exportar'.
+                            </p>
+                        ) : (
+                            <div style={{ background: 'white', padding: '16px', borderRadius: '8px', marginBottom: '24px' }}>
+                                <QRCodeSVG 
+                                    value={qrUrl} 
+                                    size={250} 
+                                    bgColor={"#ffffff"} 
+                                    fgColor={"#000000"} 
+                                    level={"L"} 
+                                    includeMargin={false} 
+                                />
+                            </div>
+                        )}
+                        <div className="modal-actions" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <button 
+                                className="btn btn-secondary" 
+                                style={{ width: '100%', justifyContent: 'center' }} 
+                                onClick={() => {
+                                    navigator.clipboard.writeText(qrUrl);
+                                    setIsCopied(true);
+                                    setTimeout(() => setIsCopied(false), 2000);
+                                }}
+                            >
+                                {isCopied ? "¡Copiado!" : "Copiar Enlace"}
+                            </button>
+                            <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setIsQRModalOpen(false)}>Cerrar</button>
                         </div>
                     </div>
                 </div>
