@@ -5,69 +5,11 @@ import { transposeChord } from '../utils/musicTheory';
 interface LineaCancionProps {
     line: string;
     transposition?: number;
-    fontSize?: number;
 }
 
-export function LineaCancion({ line, transposition = 0, fontSize = 1 }: LineaCancionProps) {
+export function LineaCancion({ line, transposition = 0 }: LineaCancionProps) {
     const segments = parseLyricsLine(line);
     const lineRef = useRef<HTMLDivElement>(null);
-
-    // Lógica para líneas mixtas (Letra + Acordes)
-    // Objetivo: Letra continua (sin separar palabras) y Acordes sin superponerse.
-    // Solucionador de colisiones (Debe declararse ántes de cualquier early-return)
-    useLayoutEffect(() => {
-        if (!lineRef.current) return;
-
-        const chords = lineRef.current.querySelectorAll('.chord-float');
-        let lastRight = -1000;
-        let lastTop = -1000;
-        let maxLineRight = 0;
-
-        const containerRect = lineRef.current.getBoundingClientRect();
-
-        chords.forEach((chordEl) => {
-            const chord = chordEl as HTMLElement;
-            chord.style.transform = 'translateX(0px)';
-
-            const rect = chord.getBoundingClientRect();
-
-            // Si la diferencia en top es mayor a la mitad de la altura física del acorde, saltó de renglón
-            if (Math.abs(rect.top - lastTop) > rect.height * 0.5) {
-                lastRight = -1000;
-                lastTop = rect.top;
-            }
-
-            const currentLeft = rect.left;
-
-            if (currentLeft < lastRight) {
-                const shift = lastRight - currentLeft + (rect.height * 0.4); // Margen dinámico físico en miniatura
-                
-                chord.style.transform = `translateX(${shift}px)`;
-                
-                const newRight = currentLeft + shift + rect.width;
-                lastRight = newRight;
-                
-                const relativeRight = newRight - containerRect.left;
-                if (relativeRight > maxLineRight) maxLineRight = relativeRight;
-            } else {
-                lastRight = currentLeft + rect.width;
-                const relativeRight = lastRight - containerRect.left;
-                if (relativeRight > maxLineRight) maxLineRight = relativeRight;
-            }
-        });
-
-        // Asegurar que el contenedor sea lo suficientemente ancho para los acordes desplazados
-        // Sumamos un pequeño margen para que no queden pegados al borde de la siguiente columna
-        if (lineRef.current) {
-            const textWidth = lineRef.current.scrollWidth;
-
-            if (maxLineRight > textWidth) {
-                lineRef.current.style.paddingRight = `${maxLineRight - textWidth + 15}px`;
-            } else {
-                lineRef.current.style.paddingRight = '10px'; // Base gutter
-            }
-        }
-    }, [line, transposition, fontSize]);
 
     // Si la línea está vacía, renderizamos un espacio para mantener el flow
     if (!line.trim()) {
@@ -103,6 +45,45 @@ export function LineaCancion({ line, transposition = 0, fontSize = 1 }: LineaCan
             </div>
         );
     }
+
+    // Lógica para líneas mixtas (Letra + Acordes)
+    // Objetivo: Letra continua (sin separar palabras) y Acordes sin superponerse.
+
+    // Solucionador de colisiones
+    useLayoutEffect(() => {
+        if (!lineRef.current) return;
+
+        const chords = lineRef.current.querySelectorAll('.chord-float');
+        let lastRight = -1000; // Valor inicial seguro
+        let lastTop = -1000; // Trackear eje Y
+
+        chords.forEach((chordEl) => {
+            const chord = chordEl as HTMLElement;
+            // Reseteamos el transform por si la pantalla cambió de tamaño
+            chord.style.transform = 'translateX(0px)';
+
+            const rect = chord.getBoundingClientRect();
+
+            // Si la diferencia en top es mayor a 10px, saltó de renglón
+            if (Math.abs(rect.top - lastTop) > 10) {
+                lastRight = -1000; // Resetear empuje
+                lastTop = rect.top;
+            }
+
+            const currentLeft = rect.left;
+
+            // Si el acorde actual pisa el espacio del anterior
+            if (currentLeft < lastRight) {
+                const shift = lastRight - currentLeft + 8; // 8px de margen visual
+                chord.style.transform = `translateX(${shift}px)`;
+                // Actualizamos el borde derecho con el nuevo desplazamiento
+                lastRight = currentLeft + shift + rect.width;
+            } else {
+                // No hay colisión, guardamos su borde derecho actual
+                lastRight = currentLeft + rect.width;
+            }
+        });
+    }, [line, transposition]);
 
     return (
         <div ref={lineRef} style={{

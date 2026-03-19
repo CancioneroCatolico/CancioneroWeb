@@ -43,13 +43,20 @@ export function TranspositionControls({ originalKey, transposition, onTransposit
                 const scrollX = window.scrollX || window.pageXOffset;
                 const scrollY = window.scrollY || window.pageYOffset;
                 const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
                 const popupWidth = 280;
+                const estimatedPopupHeight = 220; // Aproximadamente la altura del menú desplegado
 
                 let left = rect.left + scrollX;
-                let top = rect.bottom + scrollY + 8; // Absolute page coordinate
+                let top = rect.bottom + scrollY + 8; // Default: Hacia abajo
+
+                // Ajuste vertical (Viewport relative check)
+                if (rect.bottom + estimatedPopupHeight > viewportHeight) {
+                    // Si no entra abajo, que se abra hacia arriba
+                    top = rect.top + scrollY - estimatedPopupHeight - 8;
+                }
 
                 // Ajuste horizontal (Viewport relative check)
-                // rect.left is viewport relative.
                 if (rect.left + popupWidth > viewportWidth) {
                     left = (viewportWidth - popupWidth - 10) + scrollX;
                 }

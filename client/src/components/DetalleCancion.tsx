@@ -1,8 +1,32 @@
 import { useEffect, useState, useRef, useLayoutEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import type { Cancion } from '../types';
 import { LineaCancion } from './LineaCancion';
 import { TranspositionControls } from './TranspositionControls';
+
+// Componente Toast simple
+const Toast = ({ mensaje, visible }: { mensaje: string, visible: boolean }) => {
+    if (!visible) return null;
+    return (
+        <div style={{
+            position: 'fixed',
+            bottom: '24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'var(--primary-color)',
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: '24px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            zIndex: 10000,
+            animation: 'fadeIn 0.3s ease-out',
+            fontWeight: 500,
+            whiteSpace: 'nowrap'
+        }}>
+            {mensaje}
+        </div>
+    );
+};
 
 export function DetalleCancion() {
     const { id } = useParams(); // Lee el ID de la URL (ej: /cancion/abc1234)
@@ -12,7 +36,66 @@ export function DetalleCancion() {
     const [fontSize, setFontSize] = useState<number>(1); // 1 = 100% (1em base)
     const [userHasManuallyResized, setUserHasManuallyResized] = useState<boolean>(false);
     const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+    const [isFsControlsVisible, setIsFsControlsVisible] = useState(true);
     const containerRef = useRef<HTMLDivElement>(null);
+    const innerWrapperRef = useRef<HTMLDivElement>(null);
+
+    // Estados para Agregar a Lista
+    const [isAddListModalOpen, setIsAddListModalOpen] = useState(false);
+    const [localLists, setLocalLists] = useState<any[]>([]);
+    const [toastMessage, setToastMessage] = useState('');
+    const [isToastVisible, setIsToastVisible] = useState(false);
+
+    // Cargar listas al abrir el modal
+    const handleOpenAddListModal = () => {
+        const saved = localStorage.getItem('cancionero_listas');
+        if (saved) {
+            try {
+                setLocalLists(JSON.parse(saved));
+            } catch (e) {
+                console.error("Error leyendo listas", e);
+                setLocalLists([]);
+            }
+        }
+        setIsAddListModalOpen(true);
+    };
+
+    const handleAddToList = (listaId: number, listaNombre: string) => {
+        if (!cancion) return;
+
+        const saved = localStorage.getItem('cancionero_listas');
+        let currentLists = [];
+        if (saved) {
+            try {
+                currentLists = JSON.parse(saved);
+            } catch (e) {
+                console.error("Error parseando listas", e);
+            }
+        }
+
+        const cancionAAgregar = {
+            idUnicoEnLista: Date.now(),
+            tipo: 'oficial',
+            idCancion: cancion.numeroCancion || cancion._id,
+            titulo: cancion.titulo,
+            tonoElegido: cancion.tonoBase
+        };
+
+        const updatedLists = currentLists.map((lista: any) => {
+            if (lista.id === listaId) {
+                return { ...lista, canciones: [...(lista.canciones || []), cancionAAgregar] };
+            }
+            return lista;
+        });
+
+        localStorage.setItem('cancionero_listas', JSON.stringify(updatedLists));
+        setIsAddListModalOpen(false);
+
+        // Mostrar Toast
+        setToastMessage(`Añadida a "${listaNombre}"`);
+        setIsToastVisible(true);
+        setTimeout(() => setIsToastVisible(false), 3000);
+    };
 
     useEffect(() => {
         // Buscamos SOLO esta canción por ID en tu backend
@@ -28,80 +111,85 @@ export function DetalleCancion() {
     }, [id]);
 
 
-    // Auto-Fit Logic (useLayoutEffect with while loop for robust resizing)
-    useLayoutEffect(() => {
-        if (!containerRef.current) return;
-        if (userHasManuallyResized) return; // Si el usuario intervino, STOP.
-
-        const el = containerRef.current;
-
-        // Ejecutamos lógica específica para Columnas (o general si aplica)
-        // El usuario pidió "if viewMode !== columns return" en el ejemplo, 
-        // pero la app tiene lógica para vertical también.
-        // Adaptamos para que 'columns' use el while loop agresivo.
-
-        if (viewMode === 'columns') {
-            let currentSize = 1.0; // Empezar en 1em (o lo que esté seteado, pero el reset lo pone en 1)
-            // Forzamos inicio en 1em para el cálculo si queremos ser estrictos, 
-            // o usamos fontSize actual? Mejor resetear aquí para cálculo fresco si cambió modo.
-            // Pero como setFontSize(1) ya ocurre en el otro effect, asumimos que empieza ahí.
-            // Start calculation from 1.0 to ensure max possible size
-            currentSize = 1.0;
-
-            el.style.fontSize = `${currentSize}em`;
-
-            // Bucle: Mientras haya scroll horizontal (Más de 1 columna)
-            // IGNORAMOS LEGIBILIDAD para garantizar que quepa todo en una pantalla inicialmente.
-            // Bajamos hasta 0.1em como seguridad técnica anti-crashes.
-            while (el.scrollWidth > el.clientWidth + 2 && currentSize > 0.1) {
-                currentSize -= 0.05;
-                el.style.fontSize = `${currentSize}em`;
-            }
-
-            // Si el loop cambió el tamaño, actualizamos el estado
-            if (currentSize !== fontSize) {
-                setFontSize(currentSize);
-            }
-        } else {
-            // Lógica para Vertical: TAMBIÉN debe ser agresiva para evitar scroll horizontal.
-            // Usamos la misma lógica de bucle 'while' para garantizar ajuste.
-            // Lógica para Vertical:
-            let currentSize = 1.0;
-            el.style.fontSize = `${currentSize}em`;
-
-            // Bucle: Mientras haya scroll horizontal (líneas muy largas)
-            // Ignoramos legibilidad para priorizar "cero scroll horizontal"
-            while (el.scrollWidth > el.clientWidth + 2 && currentSize > 0.1) {
-                currentSize -= 0.05;
-                el.style.fontSize = `${currentSize}em`;
-            }
-
-            if (currentSize !== fontSize) {
-                setFontSize(currentSize);
-            }
-        }
-    }, [viewMode, cancion, userHasManuallyResized]); // Quitamos fontSize de deps para evitar bucle infinito con el loop interno
-
-    // Detectar scroll manual para desactivar auto-fit
+    // Control de scroll horizontal del body en modo vertical
     useEffect(() => {
-        const el = containerRef.current;
-        if (!el) return;
+        if (viewMode === 'vertical' && !userHasManuallyResized) {
+            document.body.style.overflowX = 'hidden';
+        } else {
+            document.body.style.overflowX = '';
+        }
+        return () => {
+            document.body.style.overflowX = '';
+        };
+    }, [viewMode, userHasManuallyResized]);
 
-        const handleScroll = () => {
-            // Si hay scroll, asumimos interacción del usuario y bloqueamos futuros auto-ajustes
-            if (!userHasManuallyResized) {
-                setUserHasManuallyResized(true);
+    // Control de Auto-hide para botones de Fullscreen
+    useEffect(() => {
+        let timeoutId: ReturnType<typeof setTimeout>;
+        if (isFullscreen) {
+            timeoutId = setTimeout(() => {
+                setIsFsControlsVisible(false);
+            }, 1500);
+        } else {
+            setIsFsControlsVisible(true);
+        }
+        return () => {
+            if (timeoutId) clearTimeout(timeoutId);
+        };
+    }, [isFullscreen, isFsControlsVisible]);
+
+    const wakeUpFsControls = () => setIsFsControlsVisible(true);
+
+    // Cálculo dinámico de escala (mediante lógica unificada de while loop)
+    useLayoutEffect(() => {
+        const calculateAjuste = () => {
+            if (userHasManuallyResized) return;
+            if (!containerRef.current || !innerWrapperRef.current) return;
+
+            const containerEl = containerRef.current;
+            const wrapperEl = innerWrapperRef.current;
+
+            // Aseguramos que la envoltura interior ocupe todo el espacio pero sin transformaciones CSS problemáticas
+            wrapperEl.style.transform = 'none';
+            wrapperEl.style.width = viewMode === 'columns' ? '100%' : 'max-content';
+
+            if (viewMode === 'vertical') {
+                let currentSize = 1.0;
+                containerEl.style.fontSize = `${currentSize}em`;
+
+                while (wrapperEl.scrollWidth > containerEl.clientWidth + 2 && currentSize > 0.1) {
+                    currentSize -= 0.05;
+                    containerEl.style.fontSize = `${currentSize}em`;
+                }
+
+                const finalSize = parseFloat(currentSize.toFixed(2));
+                if (finalSize !== fontSize) setFontSize(finalSize);
+
+            } else if (viewMode === 'columns') {
+                let currentSize = 1.0;
+                containerEl.style.fontSize = `${currentSize}em`;
+
+                while (containerEl.scrollWidth > containerEl.clientWidth + 2 && currentSize > 0.1) {
+                    currentSize -= 0.05;
+                    containerEl.style.fontSize = `${currentSize}em`;
+                }
+
+                const finalSize = parseFloat(currentSize.toFixed(2));
+                if (finalSize !== fontSize) setFontSize(finalSize);
             }
         };
 
-        el.addEventListener('scroll', handleScroll);
-        return () => el.removeEventListener('scroll', handleScroll);
-    }, [userHasManuallyResized]);
+        calculateAjuste();
 
-
+        window.addEventListener('resize', calculateAjuste);
+        return () => window.removeEventListener('resize', calculateAjuste);
+    }, [cancion, transposition, viewMode, userHasManuallyResized, fontSize, isFullscreen]);
 
     // Resetear font size y estado manual al cambiar de modo
     useEffect(() => {
+        if (!userHasManuallyResized) {
+            setFontSize(1.0); // Reseteo para asegurar re-cálculo fresco sin caché de vista anterior
+        }
         setUserHasManuallyResized(false); // Reiniciamos flag manual
     }, [viewMode]);
 
@@ -161,6 +249,33 @@ export function DetalleCancion() {
                         )}
                     </button>
 
+                    <button
+                        className="btn"
+                        onClick={handleOpenAddListModal}
+                        style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: '44px', height: '44px', padding: 0,
+                            flex: '0 0 44px',
+                            border: '1px solid var(--card-border)',
+                            backgroundColor: 'transparent',
+                            borderRadius: '10px',
+                            color: 'var(--text-color)'
+                        }}
+                        title="Añadir a lista"
+                    >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                        <div style={{ position: 'absolute', transform: 'translate(8px, 8px)', backgroundColor: 'var(--primary-color)', borderRadius: '50%', width: '12px', height: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </div>
+                    </button>
+
                     <div style={{ display: 'flex', gap: '5px', flex: '0 1 auto' }}>
                         <button className="btn" style={{ height: '44px', minWidth: '40px', padding: '0 5px' }} onClick={() => { setFontSize(f => Math.min(f + 0.1, 2)); setUserHasManuallyResized(true); }}>A+</button>
                         <button className="btn" style={{ height: '44px', minWidth: '40px', padding: '0 5px' }} onClick={() => { setFontSize(f => Math.max(f - 0.1, 0.4)); setUserHasManuallyResized(true); }}>A-</button>
@@ -187,6 +302,8 @@ export function DetalleCancion() {
             <div
                 ref={containerRef}
                 className="card"
+                onMouseMove={isFullscreen ? wakeUpFsControls : undefined}
+                onTouchStart={isFullscreen ? wakeUpFsControls : undefined}
                 style={{
                     padding: viewMode === 'columns' ? '20px 60px 20px 20px' : '20px',
                     boxSizing: 'border-box',
@@ -203,12 +320,7 @@ export function DetalleCancion() {
                     backgroundColor: isFullscreen ? 'var(--bg-color)' : undefined, // Restore bg for FS
                     maxWidth: isFullscreen ? 'none' : '100%',
 
-                    // Column logic
-                    display: viewMode === 'columns' ? 'flex' : 'block',
-                    flexDirection: viewMode === 'columns' ? 'column' : undefined,
-                    flexWrap: viewMode === 'columns' ? 'wrap' : undefined,
-                    alignContent: viewMode === 'columns' ? 'flex-start' : undefined,
-                    columnGap: '2em',
+                    // Font base
                     fontSize: `${fontSize}em`,
 
                     // Scroll & Overflow
@@ -232,7 +344,10 @@ export function DetalleCancion() {
                             width: '44px',
                             height: '44px',
                             cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            opacity: isFsControlsVisible ? 1 : 0,
+                            pointerEvents: isFsControlsVisible ? 'auto' : 'none',
+                            transition: 'opacity 0.4s ease'
                         }}
                     >
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
@@ -240,15 +355,77 @@ export function DetalleCancion() {
                 )}
 
 
-                {cancion.letra.map((linea, i) => (
-                    <div key={i} style={{ width: 'max-content', whiteSpace: 'nowrap' }}>
-                        <LineaCancion
-                            line={linea}
-                            transposition={transposition}
-                        />
-                    </div>
-                ))}
+                <div
+                    ref={innerWrapperRef}
+                    style={{
+                        // Column logic
+                        display: viewMode === 'columns' ? 'flex' : 'block',
+                        flexDirection: viewMode === 'columns' ? 'column' : undefined,
+                        flexWrap: viewMode === 'columns' ? 'wrap' : undefined,
+                        alignContent: viewMode === 'columns' ? 'flex-start' : undefined,
+                        columnGap: '2em',
+                        height: viewMode === 'columns' ? '100%' : 'auto',
+                    }}
+                >
+                    {cancion.letra.map((linea, i) => (
+                        <div key={i} style={{ width: 'max-content', whiteSpace: 'nowrap' }}>
+                            <LineaCancion
+                                line={linea}
+                                transposition={transposition}
+                                fontSize={fontSize}
+                            />
+                        </div>
+                    ))}
+                </div>
             </div>
+
+            {/* Modal Añadir a Lista */}
+            {isAddListModalOpen && (
+                <div className="modal-overlay" onClick={(e) => { if(e.target === e.currentTarget) setIsAddListModalOpen(false); }}>
+                    <div className="modal-content animate-fade-in" style={{ padding: '20px', maxWidth: '350px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <h3 className="modal-title" style={{ margin: 0, fontSize: '1.2rem' }}>Añadir a lista</h3>
+                            <button className="btn-icon-small" onClick={() => setIsAddListModalOpen(false)}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
+
+                        {localLists.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--secondary-color)' }}>
+                                <p style={{ marginBottom: '16px' }}>No tienes listas creadas.</p>
+                                <Link to="/mis-listas" className="btn btn-primary" style={{ textDecoration: 'none', display: 'inline-block' }}>Ir a Mis Listas</Link>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+                                {localLists.map(lista => (
+                                    <button 
+                                        key={lista.id}
+                                        className="btn"
+                                        style={{
+                                            justifyContent: 'flex-start',
+                                            backgroundColor: 'var(--bg-color)',
+                                            border: '1px solid var(--card-border)',
+                                            padding: '12px 16px',
+                                            color: 'var(--text-color)',
+                                            textAlign: 'left'
+                                        }}
+                                        onClick={() => handleAddToList(lista.id, lista.nombre)}
+                                    >
+                                        <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
+                                            {lista.nombre}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            <Toast mensaje={toastMessage} visible={isToastVisible} />
         </div>
     );
 }
