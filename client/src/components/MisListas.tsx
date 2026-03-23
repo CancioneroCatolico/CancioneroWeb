@@ -84,7 +84,7 @@ export function MisListas() {
     // Resetear a dashboard si tocan el botón principal de 'Mis Listas'
     useEffect(() => {
         const handleReset = () => {
-            setSearchParams({});
+            setSearchParams({}, { replace: true });
         };
         window.addEventListener('reset-mis-listas', handleReset);
         return () => window.removeEventListener('reset-mis-listas', handleReset);
@@ -328,7 +328,26 @@ export function MisListas() {
         setQrUrl(url);
         setIsCopied(false);
         setIsQRModalOpen(true);
+        window.history.pushState({ modal: 'qr' }, '');
     };
+
+    const handleCerrarQRModal = () => {
+        setIsQRModalOpen(false);
+        if (window.history.state?.modal === 'qr') {
+            window.history.back();
+        }
+    };
+
+    useEffect(() => {
+        const handlePopState = () => {
+            if (isQRModalOpen) {
+                setIsQRModalOpen(false);
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [isQRModalOpen]);
 
     // Funciones Modal Eliminar Lista
     const handleAbrirEliminarLista = (id: number | string, nombre: string) => {
@@ -456,8 +475,16 @@ export function MisListas() {
         setSearchParams({ lista: id.toString(), vista: 'editor' });
     };
 
+    const handleGoBack = (fallbackParams: any = {}) => {
+        if (window.history.state && typeof window.history.state.idx === 'number' && window.history.state.idx > 0) {
+            navigate(-1);
+        } else {
+            setSearchParams(fallbackParams, { replace: true });
+        }
+    };
+
     const handleVolver = () => {
-        setSearchParams({});
+        handleGoBack({});
     };
 
     const renderDashboard = () => (
@@ -752,7 +779,7 @@ export function MisListas() {
                     <p style={{ color: 'var(--text-color)' }}>Error: No se pudo cargar la letra de esta canción.</p>
                     <button className="btn btn-primary" onClick={() => {
                         handleNextSong(); // Intentar saltar a la siguiente si esta falla
-                        if (currentSongIndex >= listaActiva.canciones.length - 1) setSearchParams({ lista: listaActiva.id.toString(), vista: 'editor' });
+                        if (currentSongIndex >= listaActiva.canciones.length - 1) handleGoBack({ lista: listaActiva.id.toString(), vista: 'editor' });
                     }} style={{ marginTop: '20px' }}>Saltar o Volver al Editor</button>
                 </div>
             );
@@ -782,7 +809,7 @@ export function MisListas() {
                     transition: 'opacity 0.4s ease',
                     pointerEvents: isHeaderVisible ? 'auto' : 'none'
                 }}>
-                    <button className="btn-icon-small" onClick={() => setSearchParams({ lista: listaActiva.id.toString(), vista: 'editor' })} title="Salir del Modo Atril" style={{ opacity: 0.8, color: 'white' }}>
+                    <button className="btn-icon-small" onClick={() => handleGoBack({ lista: listaActiva.id.toString(), vista: 'editor' })} title="Salir del Modo Atril" style={{ opacity: 0.8, color: 'white' }}>
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -968,17 +995,28 @@ export function MisListas() {
             {/* Modal Compartir QR */}
             {isQRModalOpen && (
                 <div className="modal-overlay">
-                    <div className="modal-content animate-fade-in" style={{ alignItems: 'center' }}>
+                    <div className="modal-content animate-fade-in" style={{ alignItems: 'center', maxHeight: '90vh', overflowY: 'auto', width: '90%', maxWidth: '400px' }}>
                         <h3 className="modal-title">Compartir Lista</h3>
                         {isQrTooDense ? (
                             <p style={{ color: '#ef4444', fontSize: '0.9rem', textAlign: 'center', marginBottom: '16px', fontWeight: 'bold' }}>
                                 No es posible generar el QR porque es muy denso. Mejor usa la opción de 'Exportar'.
                             </p>
                         ) : (
-                            <div style={{ background: 'white', padding: '16px', borderRadius: '8px', marginBottom: '24px' }}>
+                            <div style={{ 
+                                background: 'white', 
+                                padding: '16px', 
+                                borderRadius: '8px', 
+                                marginBottom: '24px',
+                                width: '100%',
+                                maxWidth: '250px',
+                                aspectRatio: '1 / 1',
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center'
+                            }}>
                                 <QRCodeSVG 
                                     value={qrUrl} 
-                                    size={250} 
+                                    style={{ width: '100%', height: '100%' }}
                                     bgColor={"#ffffff"} 
                                     fgColor={"#000000"} 
                                     level={"L"} 
@@ -989,7 +1027,7 @@ export function MisListas() {
                         <div className="modal-actions" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             <button 
                                 className="btn btn-secondary" 
-                                style={{ width: '100%', justifyContent: 'center' }} 
+                                style={{ width: '100%', justifyContent: 'center', flexShrink: 0 }} 
                                 onClick={() => {
                                     navigator.clipboard.writeText(qrUrl);
                                     setIsCopied(true);
@@ -998,7 +1036,7 @@ export function MisListas() {
                             >
                                 {isCopied ? "¡Copiado!" : "Copiar Enlace"}
                             </button>
-                            <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setIsQRModalOpen(false)}>Cerrar</button>
+                            <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', flexShrink: 0 }} onClick={handleCerrarQRModal}>Cerrar</button>
                         </div>
                     </div>
                 </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useLayoutEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import type { Cancion } from '../types';
 import { LineaCancion } from './LineaCancion';
 import { TranspositionControls } from './TranspositionControls';
@@ -45,6 +45,8 @@ export function DetalleCancion() {
     const [localLists, setLocalLists] = useState<any[]>([]);
     const [toastMessage, setToastMessage] = useState('');
     const [isToastVisible, setIsToastVisible] = useState(false);
+    const [isCreatingList, setIsCreatingList] = useState(false);
+    const [newListName, setNewListName] = useState('');
 
     // Cargar listas al abrir el modal
     const handleOpenAddListModal = () => {
@@ -58,6 +60,8 @@ export function DetalleCancion() {
             }
         }
         setIsAddListModalOpen(true);
+        setIsCreatingList(false);
+        setNewListName('');
     };
 
     const handleAddToList = (listaId: number, listaNombre: string) => {
@@ -93,6 +97,45 @@ export function DetalleCancion() {
 
         // Mostrar Toast
         setToastMessage(`Añadida a "${listaNombre}"`);
+        setIsToastVisible(true);
+        setTimeout(() => setIsToastVisible(false), 3000);
+    };
+
+    const handleCrearYAnadir = () => {
+        if (!newListName.trim() || !cancion) return;
+
+        const saved = localStorage.getItem('cancionero_listas');
+        let currentLists = [];
+        if (saved) {
+            try {
+                currentLists = JSON.parse(saved);
+            } catch (e) {
+                console.error("Error parseando listas", e);
+            }
+        }
+
+        const cancionAAgregar = {
+            idUnicoEnLista: Date.now(),
+            tipo: 'oficial',
+            idCancion: cancion.numeroCancion || cancion._id,
+            titulo: cancion.titulo,
+            tonoElegido: cancion.tonoBase
+        };
+
+        const nuevaLista = {
+            id: crypto.randomUUID ? crypto.randomUUID() : Date.now(),
+            nombre: newListName.trim(),
+            canciones: [cancionAAgregar]
+        };
+
+        const updatedLists = [...currentLists, nuevaLista];
+        localStorage.setItem('cancionero_listas', JSON.stringify(updatedLists));
+        
+        setIsCreatingList(false);
+        setNewListName('');
+        setIsAddListModalOpen(false);
+
+        setToastMessage(`Añadida a "${nuevaLista.nombre}"`);
         setIsToastVisible(true);
         setTimeout(() => setIsToastVisible(false), 3000);
     };
@@ -393,33 +436,58 @@ export function DetalleCancion() {
                             </button>
                         </div>
 
-                        {localLists.length === 0 ? (
-                            <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--secondary-color)' }}>
-                                <p style={{ marginBottom: '16px' }}>No tienes listas creadas.</p>
-                                <Link to="/mis-listas" className="btn btn-primary" style={{ textDecoration: 'none', display: 'inline-block' }}>Ir a Mis Listas</Link>
+                        {isCreatingList ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <input
+                                    type="text"
+                                    className="input"
+                                    placeholder="Nombre de la nueva lista"
+                                    value={newListName}
+                                    onChange={(e) => setNewListName(e.target.value)}
+                                    autoFocus
+                                />
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                                    <button className="btn btn-secondary" onClick={() => setIsCreatingList(false)}>Cancelar</button>
+                                    <button className="btn btn-primary" onClick={handleCrearYAnadir} disabled={!newListName.trim()}>Crear y Añadir</button>
+                                </div>
                             </div>
                         ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
-                                {localLists.map(lista => (
-                                    <button 
-                                        key={lista.id}
-                                        className="btn"
-                                        style={{
-                                            justifyContent: 'flex-start',
-                                            backgroundColor: 'var(--bg-color)',
-                                            border: '1px solid var(--card-border)',
-                                            padding: '12px 16px',
-                                            color: 'var(--text-color)',
-                                            textAlign: 'left'
-                                        }}
-                                        onClick={() => handleAddToList(lista.id, lista.nombre)}
-                                    >
-                                        <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
-                                            {lista.nombre}
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
+                            <>
+                                {localLists.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--secondary-color)' }}>
+                                        <p style={{ marginBottom: '16px' }}>No tienes listas creadas.</p>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto', marginBottom: '16px' }}>
+                                        {localLists.map(lista => (
+                                            <button 
+                                                key={lista.id}
+                                                className="btn"
+                                                style={{
+                                                    justifyContent: 'flex-start',
+                                                    backgroundColor: 'var(--bg-color)',
+                                                    border: '1px solid var(--card-border)',
+                                                    padding: '12px 16px',
+                                                    color: 'var(--text-color)',
+                                                    textAlign: 'left'
+                                                }}
+                                                onClick={() => handleAddToList(lista.id, lista.nombre)}
+                                            >
+                                                <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
+                                                    {lista.nombre}
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                                <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setIsCreatingList(true)}>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px' }}>
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                    Crear nueva lista
+                                </button>
+                            </>
                         )}
                     </div>
                 </div>
