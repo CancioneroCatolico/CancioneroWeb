@@ -8,6 +8,23 @@ interface LineaCancionProps {
     fontSize?: number;
 }
 
+function renderTextWithBoldContext(text: string, initiallyBold: boolean) {
+    if (!text) return { nodes: text, isBold: initiallyBold };
+    
+    const parts = text.split('**');
+    let currentBold = initiallyBold;
+    
+    const nodes = parts.map((part, i) => {
+        const node = currentBold ? <strong key={i}>{part}</strong> : part;
+        if (i < parts.length - 1) {
+            currentBold = !currentBold;
+        }
+        return node;
+    });
+    
+    return { nodes, isBold: currentBold };
+}
+
 export function LineaCancion({ line, transposition = 0, fontSize = 1 }: LineaCancionProps) {
     const segments = parseLyricsLine(line);
     const lineRef = useRef<HTMLDivElement>(null);
@@ -104,6 +121,8 @@ export function LineaCancion({ line, transposition = 0, fontSize = 1 }: LineaCan
         );
     }
 
+    let isBold = false;
+
     return (
         <div ref={lineRef} style={{
             display: 'block',
@@ -117,10 +136,14 @@ export function LineaCancion({ line, transposition = 0, fontSize = 1 }: LineaCan
                 const startsWithSpace = segment.text.startsWith(' ');
                 const cleanText = startsWithSpace ? segment.text.substring(1) : segment.text;
 
+                const spaceIsBold = isBold;
+                const { nodes, isBold: newIsBold } = renderTextWithBoldContext(cleanText, isBold);
+                isBold = newIsBold;
+
                 return (
                     <Fragment key={index}>
                         {/* El espacio natural para que fluyan las palabras */}
-                        {startsWithSpace && <span>{' '}</span>}
+                        {startsWithSpace && (spaceIsBold ? <strong>{' '}</strong> : <span>{' '}</span>)}
 
                         {/* Ancla del acorde: un bloque de ancho 0, pero con altura (2.2em) para
                             empujar la caja de línea hacia arriba si este texto llega a saltar de renglón */}
@@ -155,7 +178,7 @@ export function LineaCancion({ line, transposition = 0, fontSize = 1 }: LineaCan
                             fontSize: '1.1em',
                             whiteSpace: 'nowrap'
                         }}>
-                            {cleanText}
+                            {nodes}
                         </span>
                     </Fragment>
                 );
