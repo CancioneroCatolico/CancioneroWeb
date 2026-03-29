@@ -265,6 +265,7 @@ h6 {
   display: flex;
   flex-direction: column;
   line-height: 1;
+  align-items: center;
 }
 
 .logo-main {
@@ -273,8 +274,9 @@ h6 {
 }
 
 .logo-sub {
-  font-size: 0.8rem;
+  font-size: 1.2rem;
   opacity: 0.8;
+  font-weight: bold;
 }
 
 /* SEARCH DESKTOP (Por defecto visible, oculto en móvil via media query) */
@@ -576,7 +578,8 @@ h6 {
 .ReloadPrompt-toast {
   position: fixed;
   right: 0;
-  bottom: 80px; /* Para que quede arriba del bottom nav móvil */
+  bottom: 80px;
+  /* Para que quede arriba del bottom nav móvil */
   margin: 16px;
   padding: 16px;
   border: 1px solid var(--card-border);
@@ -713,7 +716,7 @@ h6 {
 @media (max-width: 768px) {
   .btn-fab {
     position: fixed;
-    bottom: 80px; 
+    bottom: 80px;
     right: 20px;
     width: 56px;
     height: 56px;
@@ -723,11 +726,11 @@ h6 {
     box-shadow: 0 4px 12px var(--card-shadow);
     z-index: 100;
   }
-  
+
   .fab-text {
     display: none;
   }
-  
+
   .fab-icon {
     display: block;
     font-size: 1.8rem;
@@ -811,17 +814,17 @@ h6 {
     flex-direction: row;
     justify-content: space-between;
   }
-  
+
   .btn-play {
     width: auto;
     padding: 10px 24px;
   }
-  
+
   .editor-secondary-actions {
     flex: 1;
     justify-content: flex-end;
   }
-  
+
   .btn-secondary {
     flex: 0 1 auto;
   }
@@ -893,7 +896,8 @@ h6 {
 
 .btn-delete:hover {
   opacity: 1;
-  color: #ef4444; /* red */
+  color: #ef4444;
+  /* red */
   background: rgba(239, 68, 68, 0.1);
 }
 
@@ -929,7 +933,7 @@ h6 {
   .desktop-only-flex {
     display: none !important;
   }
-  
+
   .mobile-only-flex {
     display: flex !important;
   }
@@ -1028,7 +1032,8 @@ h6 {
 
 .modal-btn-danger {
   background-color: transparent;
-  color: #ef4444; /* red-500 */
+  color: #ef4444;
+  /* red-500 */
   border: 1px solid #ef4444;
 }
 
@@ -1038,106 +1043,116 @@ h6 {
 
 /* --- MODO ATRIL (LIVE MODE) --- */
 .live-mode-fullscreen {
-    position: fixed;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100vw;
-    height: 100dvh;
-    background-color: var(--bg-color);
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden; /* Prevent body scroll during live mode */
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100vw;
+  height: 100dvh;
+  background-color: var(--bg-color);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Prevent body scroll during live mode */
 }
 
 .live-mode-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 20px;
-    background-color: var(--bg-color);
-    border-bottom: 1px solid var(--card-border);
-    z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background-color: var(--bg-color);
+  border-bottom: 1px solid var(--card-border);
+  z-index: 10;
 }
 
 .live-mode-title {
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: var(--primary-color);
-    text-align: center;
-    flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding: 0 16px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  text-align: center;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 16px;
 }
 
 .live-mode-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-    padding-bottom: 80px; /* Space for bottom controls if needed */
-    position: relative;
-    /* Hide scrollbar for cleaner look */
-    scrollbar-width: none; 
-    -ms-overflow-style: none;
-    /* Fade in after scaling calculation */
-    opacity: 1;
-    transition: opacity 0.2s ease;
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  padding-bottom: 80px;
+  /* Space for bottom controls if needed */
+  position: relative;
+  /* Hide scrollbar for cleaner look */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  /* Fade in after scaling calculation */
+  opacity: 1;
+  transition: opacity 0.2s ease;
 }
+
 .live-mode-content::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
 
 /* Touch Zones for seamless pagination */
 .touch-zone-left,
 .touch-zone-right {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 25%;
-    z-index: 5;
-    /* background: rgba(255,0,0,0.1); /* Uncomment to debug zones */
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 25%;
+  z-index: 5;
+  /* background: rgba(255,0,0,0.1); /* Uncomment to debug zones */
 }
-.touch-zone-left { left: 0; }
-.touch-zone-right { right: 0; }
+
+.touch-zone-left {
+  left: 0;
+}
+
+.touch-zone-right {
+  right: 0;
+}
 
 .live-mode-controls {
-    position: absolute;
-    bottom: 30px;
-    left: 20px;
-    right: 20px;
-    display: flex;
-    justify-content: space-between;
-    pointer-events: none; /* Let clicks pass through if not on button */
-    z-index: 10;
+  position: absolute;
+  bottom: 30px;
+  left: 20px;
+  right: 20px;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+  /* Let clicks pass through if not on button */
+  z-index: 10;
 }
 
 .live-mode-controls button {
-    pointer-events: auto;
-    border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--card-bg);
-    border: 1px solid var(--card-border);
-    color: var(--text-color);
-    box-shadow: 0 4px 12px var(--card-shadow);
-    opacity: 0.6;
-    transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: auto;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  color: var(--text-color);
+  box-shadow: 0 4px 12px var(--card-shadow);
+  opacity: 0.6;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .live-mode-controls button:hover,
 .live-mode-controls button:active {
-    opacity: 1;
-    transform: scale(1.05);
+  opacity: 1;
+  transform: scale(1.05);
 }
 
 .live-mode-controls button:disabled {
-    opacity: 0.2;
-    pointer-events: none;
+  opacity: 0.2;
+  pointer-events: none;
 }
