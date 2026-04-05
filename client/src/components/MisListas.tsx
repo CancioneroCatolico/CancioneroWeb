@@ -67,6 +67,10 @@ export function MisListas() {
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
+    // Long press to copy states
+    const [isReadyToCopy, setIsReadyToCopy] = useState(false);
+    const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     // Estado real de listas inicializado desde localStorage o vacío
     const [listas, setListas] = useState<ListaItem[]>(() => {
         const saved = localStorage.getItem('cancionero_listas');
@@ -694,6 +698,13 @@ export function MisListas() {
                                                         className="song-item card"
                                                         ref={provided.innerRef}
                                                         {...provided.draggableProps}
+                                                        onClick={() => {
+                                                            if (listaActiva) {
+                                                                setCurrentSongIndex(index);
+                                                                setSearchParams({ lista: listaActiva.id.toString(), vista: 'live' });
+                                                            }
+                                                        }}
+                                                        style={{ ...provided.draggableProps.style, cursor: 'pointer' }}
                                                     >
                                                         <div className="song-item-left">
                                                             <span
@@ -712,7 +723,7 @@ export function MisListas() {
                                                             </span>
                                                             <span className="song-item-title">{prefix}{cancion.titulo}</span>
                                                         </div>
-                                                        <div className="song-item-right" style={{ gap: '12px' }}>
+                                                        <div className="song-item-right" style={{ gap: '12px' }} onClick={(e) => e.stopPropagation()}>
                                                             <div style={{ display: 'flex', alignItems: 'center' }}>
                                                                 <TranspositionControls
                                                                     originalKey={cancion.tonoBase || cancion.tonoElegido}
@@ -794,6 +805,48 @@ export function MisListas() {
         const isFirst = currentSongIndex === 0;
         const isLast = currentSongIndex === listaActiva.canciones.length - 1;
 
+        // Long Press to Copy Logic
+        const handleTouchStart = () => {
+            setIsReadyToCopy(false);
+            if (pressTimer.current) clearTimeout(pressTimer.current);
+            pressTimer.current = setTimeout(() => {
+                setIsReadyToCopy(true);
+                if (navigator.vibrate) navigator.vibrate(50); // Feedback táctil sutil
+            }, 1000);
+        };
+
+        const handleTouchEnd = () => {
+            if (pressTimer.current) {
+                clearTimeout(pressTimer.current);
+                pressTimer.current = null;
+            }
+            if (isReadyToCopy) {
+                if (cancionOficial?.letra) {
+                    // Si tiene texto puro
+                    const textChunks = Array.isArray(cancionOficial.letra) ? cancionOficial.letra.join('\n') : '';
+                    // Sacar etiquetas html/componentes si aplicase (o purificar). 
+                    // En este caso letra es un array de strings parseables o directo strings con **.
+                    // Removemos acentos markdown de negritas para la copia limpia
+                    const cleanText = textChunks.replace(/\*\*/g, '');
+                    navigator.clipboard.writeText(cleanText).then(() => {
+                        setImportMessage({ title: "¡Letra Copiada!", text: "Se copió toda la letra al portapapeles." });
+                    }).catch((err) => {
+                        console.error("Error al copiar: ", err);
+                        setImportMessage({ title: "Error", text: "No se pudo copiar al portapapeles automáticamente.", isError: true });
+                    });
+                }
+                setIsReadyToCopy(false);
+            }
+        };
+
+        const handleTouchMove = () => {
+            if (pressTimer.current) {
+                clearTimeout(pressTimer.current);
+                pressTimer.current = null;
+            }
+            setIsReadyToCopy(false);
+        };
+
         return (
             <div className="live-mode-fullscreen animate-fade-in" onClick={wakeUpHeader} onMouseMove={wakeUpHeader} onTouchStart={wakeUpHeader}>
                 {/* Floating Header */}
@@ -821,9 +874,36 @@ export function MisListas() {
                     </div>
                 </div>
 
+                {isReadyToCopy && (
+                    <div style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        background: 'var(--primary-color)',
+                        color: 'white',
+                        padding: '12px 24px',
+                        borderRadius: '24px',
+                        fontWeight: 'bold',
+                        zIndex: 2000,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                        pointerEvents: 'none',
+                        animation: 'fadeIn 0.2s ease-out'
+                    }}>
+                        Levanta el dedo para copiar
+                    </div>
+                )}
+
                 <div
                     ref={containerRef}
                     className="live-mode-content"
+                    onTouchStart={handleTouchStart}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchMove={handleTouchMove}
+                    onMouseDown={handleTouchStart}
+                    onMouseUp={handleTouchEnd}
+                    onMouseMove={handleTouchMove}
+                    onContextMenu={(e) => { e.preventDefault(); }}
                     style={{
                         padding: '10px 20px 40px 20px',
                         paddingTop: '2.5em',   // Espacio para que los acordes de la primera línea no se corten
@@ -836,7 +916,9 @@ export function MisListas() {
                         alignContent: 'flex-start',  // Siempre desde la izquierda, sin overflow negativo
                         justifyContent: 'flex-start',
                         columnGap: '3em',
-                        boxSizing: 'border-box'
+                        boxSizing: 'border-box',
+                        userSelect: 'none',
+                        WebkitUserSelect: 'none'
                     }}
                 >
                     {/* Zonas táctiles invisibles para navegar rápido en móviles o tablets */}
@@ -846,7 +928,7 @@ export function MisListas() {
                     {/* Contenido Letra adaptado al layout en columnas horizontales */}
                     {cancionOficial.letra && Array.isArray(cancionOficial.letra) ? (
                         cancionOficial.letra.map((linea: string, i: number) => (
-                            <div key={i} style={{ width: 'max-content', whiteSpace: 'nowrap' }}>
+                            <div key={i} style={{ width: 'max-content', whiteSpace: 'nowrap', pointerEvents: 'none' }}>
                                 <LineaCancion
                                     line={linea}
                                     transposition={transpositionDelta}
@@ -859,7 +941,11 @@ export function MisListas() {
                     )}
                 </div>
 
-                <div className="live-mode-controls">
+                <div className="live-mode-controls" style={{
+                    opacity: isHeaderVisible ? 1 : 0,
+                    transition: 'opacity 0.4s ease',
+                    pointerEvents: isHeaderVisible ? 'auto' : 'none'
+                }}>
                     <button onClick={(e) => { e.stopPropagation(); handlePrevSong(); }} disabled={isFirst} title="Anterior">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="15 18 9 12 15 6"></polyline>

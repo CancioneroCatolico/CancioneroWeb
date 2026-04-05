@@ -633,6 +633,18 @@ h6 {
   background-color: var(--primary-hover);
 }
 
+/* Bloqueo extremo para "Touch to Search" de Android y selecciones nativas */
+.live-mode-content, .live-mode-content * {
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  -khtml-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  /* Evitar que toque las palabras */
+  touch-action: pan-y !important; /* Desactiva double-tap to zoom y touch to search extra gestures */
+}
+
 /* --- MIS LISTAS MOCKUP --- */
 
 .animate-fade-in {

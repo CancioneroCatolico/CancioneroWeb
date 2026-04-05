@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { SCALE, getKeyDistance, transposeChord } from '../utils/musicTheory';
 
@@ -12,9 +12,29 @@ export function TranspositionControls({ originalKey, transposition, onTransposit
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({});
-
-    // Logic handles in main component body
+    
     const popupRef = useRef<HTMLDivElement>(null);
+
+    const checkIsMobile = useCallback(() => {
+        const isMobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isMobileBreakpoint = window.innerWidth <= 850 && window.innerHeight <= 500; // Landscape phone
+        return window.innerWidth <= 768 || isMobileBreakpoint || isMobileUserAgent;
+    }, []);
+
+    const [isMobile, setIsMobile] = useState(checkIsMobile());
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(checkIsMobile());
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const handleClose = useCallback(() => {
+        setIsOpen(false);
+        if (isMobile && window.history.state?.modal === 'transposition') {
+            window.history.back();
+        }
+    }, [isMobile]);
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -23,21 +43,38 @@ export function TranspositionControls({ originalKey, transposition, onTransposit
             const clickedPopup = popupRef.current?.contains(target);
 
             if (!clickedButton && !clickedPopup) {
-                setIsOpen(false);
+                handleClose();
             }
         }
 
-        if (isOpen) {
+        if (isOpen && !isMobile) {
             document.addEventListener("mousedown", handleClickOutside);
         }
         return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [isOpen, isMobile, handleClose]);
+
+    // History API para móviles
+    useEffect(() => {
+        if (isOpen && isMobile) {
+            window.history.pushState({ modal: 'transposition' }, '');
+        }
+    }, [isOpen, isMobile]);
+
+    useEffect(() => {
+        const handlePopState = () => {
+            if (isOpen) {
+                setIsOpen(false);
+            }
+        };
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
     }, [isOpen]);
 
     const currentKey = transposeChord(originalKey, transposition);
 
-    // Calcular posición al abrir
+    // Calcular posición al abrir en Desktop
     useLayoutEffect(() => {
-        if (isOpen && menuRef.current) {
+        if (isOpen && !isMobile && menuRef.current) {
             const updatePosition = () => {
                 const rect = menuRef.current!.getBoundingClientRect();
                 const scrollX = window.scrollX || window.pageXOffset;
@@ -63,7 +100,7 @@ export function TranspositionControls({ originalKey, transposition, onTransposit
                 if (rect.left < 0) left = 10 + scrollX;
 
                 setPopupStyle({
-                    position: 'absolute', // Absolute to Document (since in direct Body child)
+                    position: 'absolute',
                     top: `${top}px`,
                     left: `${left}px`,
                     backgroundColor: 'var(--card-bg)',
@@ -80,16 +117,82 @@ export function TranspositionControls({ originalKey, transposition, onTransposit
             };
 
             updatePosition();
-            // Optional: Listen to window resize to update? 
             window.addEventListener('resize', updatePosition);
             return () => window.removeEventListener('resize', updatePosition);
         }
-    }, [isOpen]);
+    }, [isOpen, isMobile]);
 
     const handleKeySelect = (targetKey: string) => {
         const distance = getKeyDistance(currentKey, targetKey);
         onTranspositionChange(transposition + distance);
     };
+
+    const renderMenuContent = () => (
+        <>
+            {isMobile && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)' }}>Seleccionar Tono</h3>
+                    <button className="btn-icon-small" onClick={handleClose} style={{ padding: 0 }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            )}
+            
+            {/* SEMITONE CONTROLS */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <button
+                    className="btn"
+                    onClick={() => onTranspositionChange(transposition - 1)}
+                    style={{ border: '1px solid var(--card-border)' }}
+                >
+                    - &frac12;
+                </button>
+                <button
+                    className="btn"
+                    onClick={() => onTranspositionChange(transposition + 1)}
+                    style={{ border: '1px solid var(--card-border)' }}
+                >
+                    + &frac12;
+                </button>
+            </div>
+
+            <div style={{ height: '1px', backgroundColor: 'var(--card-border)' }}></div>
+
+            {/* KEY GRID */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                {SCALE.map((note) => {
+                    const noteBase = transposeChord(currentKey, 0).replace(/m|7|5|dim|aug|sus|2|4|6|9|11|13/g, '').trim();
+                    const active = note === noteBase;
+
+                    return (
+                        <button
+                            key={note}
+                            className={`btn btn-grid-key ${active ? 'active' : ''}`}
+                            onClick={() => handleKeySelect(note)}
+                        >
+                            {note}
+                        </button>
+                    );
+                })}
+            </div>
+
+            <div style={{ height: '1px', backgroundColor: 'var(--card-border)' }}></div>
+
+            <button
+                className="btn"
+                onClick={() => {
+                    onTranspositionChange(0);
+                    handleClose();
+                }}
+                style={{ width: '100%', border: '1px solid var(--card-border)' }}
+            >
+                Restaurar tono inicial
+            </button>
+        </>
+    );
 
     return (
         <div style={{ position: 'relative' }} ref={menuRef}>
@@ -101,11 +204,11 @@ export function TranspositionControls({ originalKey, transposition, onTransposit
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    width: '80px', // Fixed width to prevent layout shift
-                    padding: '5px 0', // Reduced horizontal padding as width is fixed
+                    width: '80px',
+                    padding: '5px 0',
                     border: '1px solid var(--card-border)',
                     backgroundColor: isOpen ? 'var(--button-hover)' : 'transparent',
-                    height: '44px', // Match toolbar height force
+                    height: '44px',
                     justifyContent: 'center'
                 }}
             >
@@ -120,73 +223,31 @@ export function TranspositionControls({ originalKey, transposition, onTransposit
                 )}
             </button>
 
-            {/* POPUP MENU (Portal to Body) */}
+            {/* PORTAL TO BODY */}
             {isOpen && createPortal(
-                <div style={popupStyle} ref={popupRef}>
-                    {/* SEMITONE CONTROLS */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                        <button
-                            className="btn"
-                            onClick={() => onTranspositionChange(transposition - 1)}
-                            style={{ border: '1px solid var(--card-border)' }}
+                isMobile ? (
+                    <div className="modal-overlay" onClick={handleClose}>
+                        <div 
+                            className="modal-content animate-fade-in" 
+                            style={{ 
+                                padding: '20px', 
+                                gap: '16px', 
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                maxHeight: '90vh',
+                                overflowY: 'auto'
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            ref={popupRef}
                         >
-                            - &frac12;
-                        </button>
-                        <button
-                            className="btn"
-                            onClick={() => onTranspositionChange(transposition + 1)}
-                            style={{ border: '1px solid var(--card-border)' }}
-                        >
-                            + &frac12;
-                        </button>
+                            {renderMenuContent()}
+                        </div>
                     </div>
-
-                    <div style={{ height: '1px', backgroundColor: 'var(--card-border)' }}></div>
-
-                    {/* KEY GRID */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
-                        {SCALE.map((note) => {
-                            // Mejor comparamos root contra root
-                            // Pero currentKey ya viene procesado por transposeChord que devuelve strings de SCALE.
-                            // Solo hay que tener cuidado con sufijos ("m", "7") en originalKeys complejos, 
-                            // pero el grid son notas limpias.
-
-                            // Si currentKey es "LAm", startsWith("LA") match.
-                            // Si currentKey es "LA#", startsWith("LA") match? NO, por el orden en SCALE si iteramos...
-                            // Actually pure string check "LA#" startsWith "LA" is true.
-                            // Necesitamos exact match con la ROOT del current key.
-
-                            const noteBase = transposeChord(currentKey, 0).replace(/m|7|5|dim|aug|sus|2|4|6|9|11|13/g, '').trim();
-                            // Hacky root extraction for highlighting. 
-                            // Or use getKeyDistance(noteBase, note) === 0 ?
-
-                            const active = note === noteBase;
-
-                            return (
-                                <button
-                                    key={note}
-                                    className={`btn btn-grid-key ${active ? 'active' : ''}`}
-                                    onClick={() => handleKeySelect(note)}
-                                >
-                                    {note}
-                                </button>
-                            );
-                        })}
+                ) : (
+                    <div style={popupStyle} ref={popupRef}>
+                        {renderMenuContent()}
                     </div>
-
-                    <div style={{ height: '1px', backgroundColor: 'var(--card-border)' }}></div>
-
-                    <button
-                        className="btn"
-                        onClick={() => {
-                            onTranspositionChange(0);
-                            setIsOpen(false);
-                        }}
-                        style={{ width: '100%', border: '1px solid var(--card-border)' }}
-                    >
-                        Restaurar tono inicial
-                    </button>
-                </div>,
+                ),
                 document.body
             )}
         </div>
