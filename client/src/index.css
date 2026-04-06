@@ -218,6 +218,22 @@ h6 {
   display: inline-block;
 }
 
+.capo-select {
+  background: var(--card-bg);
+  color: var(--text-color);
+  border: 1px solid var(--card-border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  height: 28px;
+}
+.capo-select:hover {
+  border-color: var(--primary-color);
+}
+
 /* ... existing styles ... */
 
 /* ... existing styles ... */

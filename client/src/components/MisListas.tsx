@@ -9,20 +9,29 @@ import { transposeChord, getKeyDistance } from '../utils/musicTheory';
 import { TranspositionControls } from './TranspositionControls';
 import { LineaCancion } from './LineaCancion';
 
-// Interfaz para la lista
-interface ListaItem {
+export interface CancionItem { 
+    idUnicoEnLista: number | string;
+    tipo: string;
+    idCancion: number | string;
+    titulo: string;
+    tonoElegido: string;
+    tonoBase?: string;
+    transporte?: number;
+    letra?: string[];   // Para export/import de canciones custom
+    autor?: string;
+}
+
+export interface SeccionItem {
+    idSeccion: string | number;
+    nombre: string;
+    canciones: CancionItem[];
+}
+
+export interface ListaItem {
     id: number | string;
     nombre: string;
-    canciones: { 
-        idUnicoEnLista: number | string, 
-        tipo: string, 
-        idCancion: number | string, 
-        titulo: string, 
-        tonoElegido: string, 
-        tonoBase?: string,
-        letra?: string[],   // Para export/import de canciones custom sin conexión a MongoDB
-        autor?: string
-    }[];
+    secciones: SeccionItem[];
+    canciones?: CancionItem[]; // Solo para retrocompatibilidad
 }
 
 // Funciones Auxiliares Búsqueda
@@ -66,6 +75,14 @@ export function MisListas() {
     const [listToDelete, setListToDelete] = useState<{ id: number | string, nombre: string } | null>(null);
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    
+    // Estados para Secciones y Canciones
+    const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
+    const [sectionToEdit, setSectionToEdit] = useState<SeccionItem | null>(null);
+    const [newSectionName, setNewSectionName] = useState('');
+    const [sectionToDelete, setSectionToDelete] = useState<{ idSeccion: string | number, nombre: string } | null>(null);
+    const [songToAdd, setSongToAdd] = useState<any>(null); // Cuando se selecciona una canción del buscador
+    const [isSelectSectionModalOpen, setIsSelectSectionModalOpen] = useState(false);
 
     // Long press to copy states
     const [isReadyToCopy, setIsReadyToCopy] = useState(false);
@@ -76,7 +93,16 @@ export function MisListas() {
         const saved = localStorage.getItem('cancionero_listas');
         if (saved) {
             try {
-                return JSON.parse(saved);
+                const parsed = JSON.parse(saved);
+                // Migración: Convertir listas antiguas a estructura con secciones
+                return parsed.map((lista: any) => {
+                    if (lista.secciones) return lista;
+                    const c = lista.canciones || [];
+                    return {
+                        ...lista,
+                        secciones: c.length > 0 ? [{ idSeccion: crypto.randomUUID ? crypto.randomUUID() : Date.now(), nombre: '', canciones: c }] : []
+                    };
+                });
             } catch (e) {
                 console.error("Error parsing listas from localStorage", e);
                 return [];
@@ -101,7 +127,8 @@ export function MisListas() {
 
     // Live Mode Top-level calculations for Hooks (Must be after 'listas' declaration)
     const listaActivaGlobal = listas.find(l => l.id === listaActivaId);
-    const cancionActivaGlobal = listaActivaGlobal?.canciones[currentSongIndex];
+    const flatCancionesGlobal = listaActivaGlobal ? listaActivaGlobal.secciones.flatMap(s => s.canciones) : [];
+    const cancionActivaGlobal = flatCancionesGlobal[currentSongIndex];
     
     // Si no está en oficiales, puede ser una canción exportada externa o custom que tiene letra incrustada
     const cancionOficialGlobal = cancionActivaGlobal ? 
@@ -210,9 +237,13 @@ export function MisListas() {
                         const nuevaLista: ListaItem = {
                             ...parsed,
                             id: crypto.randomUUID ? crypto.randomUUID() : Date.now() + Math.random(),
-                            canciones: (parsed.canciones || []).map((c: any) => ({
-                                ...c,
-                                idUnicoEnLista: crypto.randomUUID ? crypto.randomUUID() : Date.now() + Math.random()
+                            secciones: (parsed.secciones || []).map((s: any) => ({
+                                ...s,
+                                idSeccion: crypto.randomUUID ? crypto.randomUUID() : Date.now() + Math.random(),
+                                canciones: (s.canciones || []).map((c: any) => ({
+                                    ...c,
+                                    idUnicoEnLista: crypto.randomUUID ? crypto.randomUUID() : Date.now() + Math.random()
+                                }))
                             }))
                         };
                         setListas(prev => [...prev, nuevaLista]);
@@ -238,7 +269,7 @@ export function MisListas() {
             const nuevaLista: ListaItem = {
                 id: Date.now(),
                 nombre: newListName.trim(),
-                canciones: []
+                secciones: []
             };
             setListas(prev => [...prev, nuevaLista]);
             setIsNameModalOpen(false);
@@ -286,9 +317,13 @@ export function MisListas() {
                 const listasProcesadas: ListaItem[] = importedListas.map(lista => ({
                     ...lista,
                     id: crypto.randomUUID ? crypto.randomUUID() : (Date.now() + Math.random().toString()),
-                    canciones: (lista.canciones || []).map((c: any) => ({
-                        ...c,
-                        idUnicoEnLista: crypto.randomUUID ? crypto.randomUUID() : (Date.now() + Math.random().toString())
+                    secciones: (lista.secciones || (lista.canciones && lista.canciones.length > 0 ? [{ idSeccion: crypto.randomUUID ? crypto.randomUUID() : Date.now(), nombre: 'General', canciones: lista.canciones }] : [])).map((s: any) => ({
+                        ...s,
+                        idSeccion: crypto.randomUUID ? crypto.randomUUID() : (Date.now() + Math.random().toString()),
+                        canciones: (s.canciones || []).map((c: any) => ({
+                            ...c,
+                            idUnicoEnLista: crypto.randomUUID ? crypto.randomUUID() : (Date.now() + Math.random().toString())
+                        }))
                     }))
                 }));
 
@@ -309,14 +344,17 @@ export function MisListas() {
 
         const payload: Partial<ListaItem> = {
             nombre: listaActiva.nombre,
-            canciones: listaActiva.canciones.map(c => {
-                const esOficial = cancionesOficiales.some(oficial => (oficial.numeroCancion || (oficial as any)._id) === c.idCancion);
-                if (esOficial) {
-                    const { letra, autor, ...rest } = c;
-                    return rest as any;
-                }
-                return c;
-            })
+            secciones: listaActiva.secciones.map(s => ({
+                ...s,
+                canciones: s.canciones.map(c => {
+                    const esOficial = cancionesOficiales.some(oficial => (oficial.numeroCancion || (oficial as any)._id) === c.idCancion);
+                    if (esOficial) {
+                        const { letra, autor, ...rest } = c;
+                        return rest as any;
+                    }
+                    return c;
+                })
+            }))
         };
 
         const jsonStr = JSON.stringify(payload);
@@ -384,8 +422,19 @@ export function MisListas() {
     };
 
     const handleAgregarCancion = (cancion: any) => {
-        if (!listaActivaId) return;
+        const listaActiva = listas.find(l => l.id === listaActivaId);
+        if (!listaActiva) return;
 
+        if (listaActiva.secciones.length === 0) {
+            handleConfirmarAgregarCancionASeccion(cancion, Date.now(), true);
+        } else {
+            setSongToAdd(cancion);
+            setIsSelectSectionModalOpen(true);
+            handleCerrarBuscador();
+        }
+    };
+
+    const handleConfirmarAgregarCancionASeccion = (cancion: any, idSeccion: string | number, createNew = false) => {
         const cancionAgregar = {
             idUnicoEnLista: Date.now(),
             tipo: 'oficial',
@@ -397,11 +446,19 @@ export function MisListas() {
 
         setListas(prev => prev.map(lista => {
             if (lista.id === listaActivaId) {
-                return { ...lista, canciones: [...lista.canciones, cancionAgregar] };
+                let nuevasSecciones = [...lista.secciones];
+                if (createNew) {
+                    nuevasSecciones.push({ idSeccion, nombre: 'General', canciones: [cancionAgregar] });
+                } else {
+                    nuevasSecciones = nuevasSecciones.map(s => s.idSeccion === idSeccion ? { ...s, canciones: [...s.canciones, cancionAgregar] } : s);
+                }
+                return { ...lista, secciones: nuevasSecciones };
             }
             return lista;
         }));
-
+        
+        setSongToAdd(null);
+        setIsSelectSectionModalOpen(false);
         handleCerrarBuscador();
     };
 
@@ -409,7 +466,13 @@ export function MisListas() {
         if (!listaActivaId) return;
         setListas(prev => prev.map(lista => {
             if (lista.id === listaActivaId) {
-                return { ...lista, canciones: lista.canciones.filter(c => c.idUnicoEnLista !== idUnicoEnLista) };
+                return {
+                    ...lista,
+                    secciones: lista.secciones.map(s => ({
+                        ...s,
+                        canciones: s.canciones.filter(c => c.idUnicoEnLista !== idUnicoEnLista)
+                    }))
+                };
             }
             return lista;
         }));
@@ -419,16 +482,38 @@ export function MisListas() {
         if (!listaActivaId) return;
         setListas(prev => prev.map(lista => {
             if (lista.id === listaActivaId) {
-                const nuevasCanciones = lista.canciones.map(c => {
-                    if (c.idUnicoEnLista === idUnicoEnLista) {
-                        if (absoluteReset && c.tonoBase) {
-                            return { ...c, tonoElegido: c.tonoBase };
+                const nuevasSecciones = lista.secciones.map(s => ({
+                    ...s,
+                    canciones: s.canciones.map(c => {
+                        if (c.idUnicoEnLista === idUnicoEnLista) {
+                            if (absoluteReset && c.tonoBase) {
+                                return { ...c, tonoElegido: c.tonoBase };
+                            }
+                            return { ...c, tonoElegido: transposeChord(c.tonoElegido, semitones) };
                         }
-                        return { ...c, tonoElegido: transposeChord(c.tonoElegido, semitones) };
-                    }
-                    return c;
-                });
-                return { ...lista, canciones: nuevasCanciones };
+                        return c;
+                    })
+                }));
+                return { ...lista, secciones: nuevasSecciones };
+            }
+            return lista;
+        }));
+    };
+
+    const handleCambiarTransporte = (idUnicoEnLista: number | string, transporte: number) => {
+        if (!listaActivaId) return;
+        setListas(prev => prev.map(lista => {
+            if (lista.id === listaActivaId) {
+                const nuevasSecciones = lista.secciones.map(s => ({
+                    ...s,
+                    canciones: s.canciones.map(c => {
+                        if (c.idUnicoEnLista === idUnicoEnLista) {
+                            return { ...c, transporte };
+                        }
+                        return c;
+                    })
+                }));
+                return { ...lista, secciones: nuevasSecciones };
             }
             return lista;
         }));
@@ -438,9 +523,10 @@ export function MisListas() {
     const handleNextSong = () => {
         const listaActiva = listas.find(l => l.id === listaActivaId);
         if (listaActiva) {
+            const totalSongs = listaActiva.secciones.flatMap(s => s.canciones).length;
             setCurrentSongIndex(prev => {
                 const nextIndex = prev + 1;
-                return nextIndex < listaActiva.canciones.length ? nextIndex : prev;
+                return nextIndex < totalSongs ? nextIndex : prev;
             });
         }
     };
@@ -455,15 +541,43 @@ export function MisListas() {
     const handleOnDragEnd = (result: DropResult) => {
         if (!result.destination || !listaActivaId) return;
 
-        const destinationIndex = result.destination.index;
+        const { source, destination, type } = result;
 
         setListas(prev => prev.map(lista => {
             if (lista.id === listaActivaId) {
-                const nuevasCanciones = Array.from(lista.canciones);
-                const [reorderedItem] = nuevasCanciones.splice(result.source.index, 1);
-                nuevasCanciones.splice(destinationIndex, 0, reorderedItem);
+                if (type === 'SECTIONS') {
+                    const nuevasSecciones = Array.from(lista.secciones);
+                    const [reorderedSection] = nuevasSecciones.splice(source.index, 1);
+                    nuevasSecciones.splice(destination.index, 0, reorderedSection);
+                    return { ...lista, secciones: nuevasSecciones };
+                } else if (type === 'SONGS') {
+                    const sourceSeccionId = source.droppableId;
+                    const destSeccionId = destination.droppableId;
+                    const nuevasSecciones = Array.from(lista.secciones);
 
-                return { ...lista, canciones: nuevasCanciones };
+                    const sourceSectionIndex = nuevasSecciones.findIndex(s => s.idSeccion.toString() === sourceSeccionId);
+                    const destSectionIndex = nuevasSecciones.findIndex(s => s.idSeccion.toString() === destSeccionId);
+
+                    if (sourceSectionIndex === -1 || destSectionIndex === -1) return lista;
+
+                    const sourceSection = nuevasSecciones[sourceSectionIndex];
+                    const destSection = nuevasSecciones[destSectionIndex];
+
+                    if (sourceSeccionId === destSeccionId) {
+                        const nuevasCanciones = Array.from(sourceSection.canciones);
+                        const [reorderedItem] = nuevasCanciones.splice(source.index, 1);
+                        nuevasCanciones.splice(destination.index, 0, reorderedItem);
+                        nuevasSecciones[sourceSectionIndex] = { ...sourceSection, canciones: nuevasCanciones };
+                    } else {
+                        const sourceCanciones = Array.from(sourceSection.canciones);
+                        const destCanciones = Array.from(destSection.canciones);
+                        const [movedItem] = sourceCanciones.splice(source.index, 1);
+                        destCanciones.splice(destination.index, 0, movedItem);
+                        nuevasSecciones[sourceSectionIndex] = { ...sourceSection, canciones: sourceCanciones };
+                        nuevasSecciones[destSectionIndex] = { ...destSection, canciones: destCanciones };
+                    }
+                    return { ...lista, secciones: nuevasSecciones };
+                }
             }
             return lista;
         }));
@@ -537,7 +651,7 @@ export function MisListas() {
                         >
                             <div className="list-card-content">
                                 <h3 className="list-card-title">{lista.nombre}</h3>
-                                <span className="list-card-count">{lista.canciones?.length || 0} canciones</span>
+                                <span className="list-card-count">{lista.secciones?.flatMap(s => s.canciones).length || 0} canciones</span>
                             </div>
                             <div style={{ position: 'relative' }}>
                                 <button
@@ -631,12 +745,12 @@ export function MisListas() {
                     <button
                         className="btn btn-primary btn-play"
                         onClick={() => {
-                            if (listaActiva && listaActiva.canciones.length > 0) {
+                            if (listaActiva && listaActiva.secciones.flatMap(s => s.canciones).length > 0) {
                                 setCurrentSongIndex(0);
                                 setSearchParams({ lista: listaActiva.id.toString(), vista: 'live' });
                             }
                         }}
-                        disabled={!listaActiva || listaActiva.canciones.length === 0}
+                        disabled={!listaActiva || listaActiva.secciones.flatMap(s => s.canciones).length === 0}
                     >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <polygon points="5 3 19 12 5 21 5 3"></polygon>
@@ -679,92 +793,131 @@ export function MisListas() {
                 </div>
 
                 <div className="editor-songs">
-                    {listaActiva?.canciones.length === 0 ? (
+                    {listaActiva?.secciones.flatMap(s => s.canciones).length === 0 && listaActiva?.secciones.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--secondary-color)' }}>
-                            No hay canciones en esta lista.
+                            No hay canciones ni secciones en esta lista.
                         </div>
                     ) : (
                         <DragDropContext onDragEnd={handleOnDragEnd}>
-                            <Droppable droppableId="lista-canciones">
+                            <Droppable droppableId="secciones-list" type="SECTIONS">
                                 {(provided) => (
                                     <div {...provided.droppableProps} ref={provided.innerRef}>
-                                        {listaActiva?.canciones.map((cancion, index) => {
-                                            const matchOficial = cancionesOficiales.find(c => (c.numeroCancion || (c as any)._id) === cancion.idCancion);
-                                            const prefix = matchOficial?.numeroCancion ? `${matchOficial.numeroCancion}. ` : '';
-                                            return (
-                                                <Draggable key={cancion.idUnicoEnLista} draggableId={cancion.idUnicoEnLista.toString()} index={index}>
+                                        {listaActiva?.secciones.map((seccion, indexSec) => (
+                                            <Draggable key={seccion.idSeccion} draggableId={seccion.idSeccion.toString()} index={indexSec}>
                                                 {(provided) => (
-                                                    <div
-                                                        className="song-item card"
-                                                        ref={provided.innerRef}
-                                                        {...provided.draggableProps}
-                                                        onClick={() => {
-                                                            if (listaActiva) {
-                                                                setCurrentSongIndex(index);
-                                                                setSearchParams({ lista: listaActiva.id.toString(), vista: 'live' });
-                                                            }
-                                                        }}
-                                                        style={{ ...provided.draggableProps.style, cursor: 'pointer' }}
-                                                    >
-                                                        <div className="song-item-left">
-                                                            <span
-                                                                className="drag-handle text-secondary"
-                                                                {...provided.dragHandleProps}
-                                                                title="Arrastrar para reordenar"
-                                                            >
-                                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                    <line x1="8" y1="6" x2="21" y2="6"></line>
-                                                                    <line x1="8" y1="12" x2="21" y2="12"></line>
-                                                                    <line x1="8" y1="18" x2="21" y2="18"></line>
-                                                                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                                                                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                                                                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                                                                </svg>
+                                                    <div ref={provided.innerRef} {...provided.draggableProps} className="seccion-container" style={{ ...provided.draggableProps.style, marginBottom: '16px' }}>
+                                                        <div className="seccion-header" style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', padding: '0 8px' }}>
+                                                            <span {...provided.dragHandleProps} className="drag-handle text-secondary" style={{ marginRight: '8px' }}>
+                                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                                                             </span>
-                                                            <span className="song-item-title">{prefix}{cancion.titulo}</span>
-                                                        </div>
-                                                        <div className="song-item-right" style={{ gap: '12px' }} onClick={(e) => e.stopPropagation()}>
-                                                            <div style={{ display: 'flex', alignItems: 'center' }}>
-                                                                <TranspositionControls
-                                                                    originalKey={cancion.tonoBase || cancion.tonoElegido}
-                                                                    transposition={getKeyDistance(cancion.tonoBase || cancion.tonoElegido, cancion.tonoElegido)}
-                                                                    onTranspositionChange={(delta) => {
-                                                                        if (delta === 0) {
-                                                                            handleTransponerCancion(cancion.idUnicoEnLista, 0, true);
-                                                                        } else {
-                                                                            // La diferencia es enviada como absolute target.
-                                                                            // Hay que calcular la diferencia relativa para apply 
-                                                                            const currentKey = cancion.tonoElegido;
-                                                                            const originalKey = cancion.tonoBase || cancion.tonoElegido;
-                                                                            const targetKey = transposeChord(originalKey, delta);
-                                                                            const relativeDelta = getKeyDistance(currentKey, targetKey);
-                                                                            if (relativeDelta !== 0) handleTransponerCancion(cancion.idUnicoEnLista, relativeDelta);
-                                                                        }
-                                                                    }}
-                                                                />
+                                                            <h3 style={{ margin: 0, flex: 1, fontSize: '1.2rem', color: 'var(--primary-color)' }}>{seccion.nombre || 'General'}</h3>
+                                                            <div style={{ display: 'flex', gap: '4px' }}>
+                                                                <button className="btn-icon-small" title="Editar Sección" onClick={() => {
+                                                                    setSectionToEdit(seccion);
+                                                                    setNewSectionName(seccion.nombre);
+                                                                    setIsSectionModalOpen(true);
+                                                                }}>
+                                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                                                                </button>
+                                                                <button className="btn-icon-small" style={{ color: '#ef4444' }} title="Eliminar Sección" onClick={() => {
+                                                                    setSectionToDelete({ idSeccion: seccion.idSeccion, nombre: seccion.nombre || 'General' });
+                                                                }}>
+                                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                                                </button>
                                                             </div>
-                                                            <button
-                                                                className="btn-icon-small btn-delete"
-                                                                onClick={() => handleEliminarCancion(cancion.idUnicoEnLista)}
-                                                                title="Eliminar de la lista"
-                                                            >
-                                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                                                </svg>
-                                                            </button>
                                                         </div>
+                                                        <Droppable droppableId={seccion.idSeccion.toString()} type="SONGS">
+                                                            {(providedInner) => (
+                                                                <div {...providedInner.droppableProps} ref={providedInner.innerRef} style={{ minHeight: '10px' }}>
+                                                                    {seccion.canciones.map((cancion, indexCan) => {
+                                                                        const matchOficial = cancionesOficiales.find(c => (c.numeroCancion || (c as any)._id) === cancion.idCancion);
+                                                                        const prefix = matchOficial?.numeroCancion ? `${matchOficial.numeroCancion}. ` : '';
+                                                                        return (
+                                                                            <Draggable key={cancion.idUnicoEnLista} draggableId={cancion.idUnicoEnLista.toString()} index={indexCan}>
+                                                                                {(providedDnD) => (
+                                                                                    <div className="song-item card" ref={providedDnD.innerRef} {...providedDnD.draggableProps} onClick={() => {
+                                                                                        if (listaActiva) {
+                                                                                            // Calculate global flat index for Live Mode
+                                                                                            let globalIndex = 0;
+                                                                                            for (let i = 0; i < indexSec; i++) globalIndex += listaActiva.secciones[i].canciones.length;
+                                                                                            globalIndex += indexCan;
+                                                                                            setCurrentSongIndex(globalIndex);
+                                                                                            setSearchParams({ lista: listaActiva.id.toString(), vista: 'live' });
+                                                                                        }
+                                                                                    }} style={{ ...providedDnD.draggableProps.style, cursor: 'pointer' }}>
+                                                                                        <div className="song-item-left">
+                                                                                            <span className="drag-handle text-secondary" {...providedDnD.dragHandleProps} title="Arrastrar para reordenar">
+                                                                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                                                                                            </span>
+                                                                                            <span className="song-item-title">{prefix}{cancion.titulo}</span>
+                                                                                        </div>
+                                                                                        <div className="song-item-right" style={{ gap: '12px' }} onClick={(e) => e.stopPropagation()}>
+                                                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                                                <TranspositionControls
+                                                                                                    originalKey={cancion.tonoBase || cancion.tonoElegido}
+                                                                                                    transposition={getKeyDistance(cancion.tonoBase || cancion.tonoElegido, cancion.tonoElegido)}
+                                                                                                    onTranspositionChange={(delta) => {
+                                                                                                        if (delta === 0) handleTransponerCancion(cancion.idUnicoEnLista, 0, true);
+                                                                                                        else {
+                                                                                                            const targetKey = transposeChord(cancion.tonoBase || cancion.tonoElegido, delta);
+                                                                                                            const relativeDelta = getKeyDistance(cancion.tonoElegido, targetKey);
+                                                                                                            if (relativeDelta !== 0) handleTransponerCancion(cancion.idUnicoEnLista, relativeDelta);
+                                                                                                        }
+                                                                                                    }}
+                                                                                                />
+                                                                                                <div style={{
+                                                                                                    position: 'relative',
+                                                                                                    width: '45px',
+                                                                                                    height: '44px',
+                                                                                                    border: '1px solid var(--card-border)',
+                                                                                                    borderRadius: '8px',
+                                                                                                    display: 'flex',
+                                                                                                    flexDirection: 'column',
+                                                                                                    alignItems: 'center',
+                                                                                                    justifyContent: 'center',
+                                                                                                    backgroundColor: 'transparent'
+                                                                                                }}>
+                                                                                                    <span style={{ fontSize: '0.7em', textTransform: 'uppercase', color: 'var(--secondary-color)', lineHeight: 1 }}>Capo</span>
+                                                                                                    <strong style={{ fontSize: '1.1em', color: 'var(--primary-color)', lineHeight: 1 }}>
+                                                                                                        {!cancion.transporte ? '0' : `${cancion.transporte}°`}
+                                                                                                    </strong>
+                                                                                                    <select 
+                                                                                                        className="capo-select"
+                                                                                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', appearance: 'none' }} 
+                                                                                                        value={cancion.transporte || 0} 
+                                                                                                        onChange={(e) => handleCambiarTransporte(cancion.idUnicoEnLista, parseInt(e.target.value))}
+                                                                                                        title="Transporte (Capotraste)"
+                                                                                                    >
+                                                                                                        {Array.from({ length: 8 }, (_, i) => (
+                                                                                                            <option key={i} value={i}>{i === 0 ? '0' : `${i}°`}</option>
+                                                                                                        ))}
+                                                                                                    </select>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <button className="btn-icon-small btn-delete" onClick={() => handleEliminarCancion(cancion.idUnicoEnLista)} title="Eliminar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                )}
+                                                                            </Draggable>
+                                                                        );
+                                                                    })}
+                                                                    {providedInner.placeholder}
+                                                                </div>
+                                                            )}
+                                                        </Droppable>
                                                     </div>
                                                 )}
                                             </Draggable>
-                                            );
-                                        })}
+                                        ))}
                                         {provided.placeholder}
                                     </div>
                                 )}
                             </Droppable>
                         </DragDropContext>
                     )}
+                    <button className="btn btn-secondary" style={{ width: '100%', padding: '12px', marginTop: '16px', borderStyle: 'dashed' }} onClick={() => { setSectionToEdit(null); setNewSectionName(''); setIsSectionModalOpen(true); }}>
+                        + Añadir Sección
+                    </button>
                 </div>
 
                 <button className="btn btn-primary btn-fab mobile-only-flex" style={{ bottom: '80px', right: '20px' }} onClick={handleAbrirBuscador}>
@@ -776,9 +929,10 @@ export function MisListas() {
 
     const renderLiveMode = () => {
         const listaActiva = listas.find(l => l.id === listaActivaId);
-        if (!listaActiva || listaActiva.canciones.length === 0) return null;
+        const flatCanciones = listaActiva ? listaActiva.secciones.flatMap(s => s.canciones) : [];
+        if (!listaActiva || flatCanciones.length === 0) return null;
 
-        const cancionActiva = listaActiva.canciones[currentSongIndex];
+        const cancionActiva = flatCanciones[currentSongIndex];
         const cancionOficial = cancionesOficiales.find(c => (c.numeroCancion || (c as any)._id) === cancionActiva.idCancion);
         const prefix = cancionOficial?.numeroCancion ? `${cancionOficial.numeroCancion}. ` : '';
 
@@ -790,7 +944,7 @@ export function MisListas() {
                     <p style={{ color: 'var(--text-color)' }}>Error: No se pudo cargar la letra de esta canción.</p>
                     <button className="btn btn-primary" onClick={() => {
                         handleNextSong(); // Intentar saltar a la siguiente si esta falla
-                        if (currentSongIndex >= listaActiva.canciones.length - 1) handleGoBack({ lista: listaActiva.id.toString(), vista: 'editor' });
+                        if (currentSongIndex >= flatCanciones.length - 1) handleGoBack({ lista: listaActiva.id.toString(), vista: 'editor' });
                     }} style={{ marginTop: '20px' }}>Saltar o Volver al Editor</button>
                 </div>
             );
@@ -803,7 +957,7 @@ export function MisListas() {
         const transpositionDelta = getKeyDistance(baseKey, targetKey);
 
         const isFirst = currentSongIndex === 0;
-        const isLast = currentSongIndex === listaActiva.canciones.length - 1;
+        const isLast = currentSongIndex === flatCanciones.length - 1;
 
         // Long Press to Copy Logic
         const handleTouchStart = () => {
@@ -870,7 +1024,7 @@ export function MisListas() {
                     </button>
                     <h2 className="live-mode-title" style={{ color: 'white', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{prefix}{cancionActiva.titulo}</h2>
                     <div style={{ width: '36px', textAlign: 'center', color: '#ccc', fontSize: '0.9rem' }}>
-                        {currentSongIndex + 1}/{listaActiva.canciones.length}
+                        {currentSongIndex + 1}/{flatCanciones.length}
                     </div>
                 </div>
 
@@ -1123,6 +1277,100 @@ export function MisListas() {
                                 {isCopied ? "¡Copiado!" : "Copiar Enlace"}
                             </button>
                             <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', flexShrink: 0 }} onClick={handleCerrarQRModal}>Cerrar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Crear/Editar Sección */}
+            {isSectionModalOpen && (
+                <div className="modal-overlay" onClick={() => setIsSectionModalOpen(false)}>
+                    <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()}>
+                        <h3 className="modal-title">{sectionToEdit ? 'Editar Sección' : 'Nueva Sección'}</h3>
+                        <input
+                            type="text"
+                            className="modal-input"
+                            placeholder="Nombre de la sección (Ej: Comunión)"
+                            value={newSectionName}
+                            onChange={(e) => setNewSectionName(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && newSectionName.trim()) {
+                                    if (!newSectionName.trim() || !listaActivaId) return;
+                                    setListas(prev => prev.map(lista => {
+                                        if (lista.id === listaActivaId) {
+                                            if (sectionToEdit) {
+                                                return { ...lista, secciones: lista.secciones.map(s => s.idSeccion === sectionToEdit.idSeccion ? { ...s, nombre: newSectionName.trim() } : s) };
+                                            } else {
+                                                return { ...lista, secciones: [...lista.secciones, { idSeccion: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(), nombre: newSectionName.trim(), canciones: [] }] };
+                                            }
+                                        }
+                                        return lista;
+                                    }));
+                                    setIsSectionModalOpen(false);
+                                }
+                            }}
+                            autoFocus
+                        />
+                        <div className="modal-actions">
+                            <button className="btn btn-secondary" onClick={() => setIsSectionModalOpen(false)}>Cancelar</button>
+                            <button className="btn btn-primary" disabled={!newSectionName.trim()} onClick={() => {
+                                if (!newSectionName.trim() || !listaActivaId) return;
+                                setListas(prev => prev.map(lista => {
+                                    if (lista.id === listaActivaId) {
+                                        if (sectionToEdit) {
+                                            return { ...lista, secciones: lista.secciones.map(s => s.idSeccion === sectionToEdit.idSeccion ? { ...s, nombre: newSectionName.trim() } : s) };
+                                        } else {
+                                            return { ...lista, secciones: [...lista.secciones, { idSeccion: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(), nombre: newSectionName.trim(), canciones: [] }] };
+                                        }
+                                    }
+                                    return lista;
+                                }));
+                                setIsSectionModalOpen(false);
+                            }}>Guardar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Eliminar Sección */}
+            {sectionToDelete && (
+                <div className="modal-overlay">
+                    <div className="modal-content animate-fade-in">
+                        <h3 className="modal-title">Eliminar Sección</h3>
+                        <p style={{ margin: '0 0 24px 0', color: 'var(--text-color)', opacity: 0.9 }}>
+                            ¿Estás seguro de que querés eliminar la sección <strong>"{sectionToDelete.nombre}"</strong> junto con todas las canciones que contiene? Esta acción no se puede deshacer.
+                        </p>
+                        <div className="modal-actions">
+                            <button className="btn btn-secondary" onClick={() => setSectionToDelete(null)}>Cancelar</button>
+                            <button className="btn modal-btn-danger" onClick={() => {
+                                setListas(prev => prev.map(l => l.id === listaActivaId ? { ...l, secciones: l.secciones.filter(s => s.idSeccion !== sectionToDelete.idSeccion) } : l));
+                                setSectionToDelete(null);
+                            }}>Eliminar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Seleccionar Sección Destino */}
+            {isSelectSectionModalOpen && songToAdd && (
+                <div className="modal-overlay" onClick={() => setIsSelectSectionModalOpen(false)}>
+                    <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()}>
+                        <h3 className="modal-title">Añadir a Sección</h3>
+                        <p style={{marginBottom: '16px', color: 'var(--secondary-color)'}}>¿En qué sección deseas agregar '{songToAdd.titulo}'?</p>
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '50vh', overflowY: 'auto'}}>
+                            {listas.find(l => l.id === listaActivaId)?.secciones.map(seccion => (
+                                <button key={seccion.idSeccion} className="btn btn-secondary" style={{justifyContent: 'flex-start', padding: '12px'}} onClick={() => handleConfirmarAgregarCancionASeccion(songToAdd, seccion.idSeccion)}>
+                                    {seccion.nombre || 'General'}
+                                </button>
+                            ))}
+                            <button className="btn btn-primary" style={{marginTop: '8px'}} onClick={() => {
+                                handleConfirmarAgregarCancionASeccion(songToAdd, crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(), true);
+                            }}>
+                                + Nueva Sección
+                            </button>
+                        </div>
+                        <div className="modal-actions" style={{marginTop: '16px'}}>
+                            <button className="btn-secondary" style={{width: '100%'}} onClick={() => setIsSelectSectionModalOpen(false)}>Cancelar</button>
                         </div>
                     </div>
                 </div>
