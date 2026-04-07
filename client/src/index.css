@@ -1184,3 +1184,33 @@ h6 {
   opacity: 0.2;
   pointer-events: none;
 }
+
+/* Custom styles for List Editor Mode */
+.edit-mode-active {
+  position: relative;
+}
+
+.edit-mode-active .seccion-container {
+  outline: 1px dashed var(--primary-color);
+  background-color: var(--input-bg);
+  border-radius: 12px;
+  padding: 8px;
+  margin-left: -8px;
+  margin-right: -8px;
+  transition: background-color 0.15s ease, padding 0.15s ease, margin 0.15s ease, outline-color 0.15s ease;
+}
+
+.btn-text {
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-text:hover {
+  background-color: var(--button-hover);
+}
