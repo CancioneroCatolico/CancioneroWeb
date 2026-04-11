@@ -749,6 +749,7 @@ export function MisListas() {
                         className="btn btn-primary btn-play"
                         onClick={() => {
                             if (listaActiva && listaActiva.secciones.flatMap(s => s.canciones).length > 0) {
+                                setIsEditMode(false);
                                 setCurrentSongIndex(0);
                                 setSearchParams({ lista: listaActiva.id.toString(), vista: 'live' });
                             }
@@ -828,16 +829,18 @@ export function MisListas() {
                                 {(provided) => (
                                     <div {...provided.droppableProps} ref={provided.innerRef}>
                                         {listaActiva?.secciones.map((seccion, indexSec) => (
-                                            <Draggable key={seccion.idSeccion} draggableId={seccion.idSeccion.toString()} index={indexSec}>
+                                            <Draggable key={seccion.idSeccion} draggableId={seccion.idSeccion.toString()} index={indexSec} isDragDisabled={!isEditMode}>
                                                 {(provided) => (
                                                     <div ref={provided.innerRef} {...provided.draggableProps} className="seccion-container" style={{ ...provided.draggableProps.style, marginBottom: '16px' }}>
                                                         <div className="seccion-header" style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', padding: '0 8px' }}>
-                                                            {isEditMode && (
-                                                                <span {...provided.dragHandleProps} className="drag-handle text-secondary" style={{ marginRight: '8px' }}>
-                                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-                                                                </span>
-                                                            )}
-                                                            <h3 style={{ margin: 0, flex: 1, fontSize: '1.2rem', color: 'var(--primary-color)' }}>{seccion.nombre || 'General'}</h3>
+                                                            <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0, cursor: isEditMode ? 'grab' : 'default' }} {...(isEditMode ? provided.dragHandleProps : {})}>
+                                                                {isEditMode && (
+                                                                    <span className="drag-handle text-secondary" style={{ marginRight: '8px' }}>
+                                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                                                                    </span>
+                                                                )}
+                                                                <h3 style={{ margin: 0, flex: 1, fontSize: '1.2rem', color: 'var(--primary-color)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{seccion.nombre || 'General'}</h3>
+                                                            </div>
                                                             {isEditMode && (
                                                                 <div style={{ display: 'flex', gap: '4px' }}>
                                                                     <button className="btn-icon-small" title="Editar Sección" onClick={() => {
@@ -862,9 +865,10 @@ export function MisListas() {
                                                                         const matchOficial = cancionesOficiales.find(c => (c.numeroCancion || (c as any)._id) === cancion.idCancion);
                                                                         const prefix = matchOficial?.numeroCancion ? `${matchOficial.numeroCancion}. ` : '';
                                                                         return (
-                                                                            <Draggable key={cancion.idUnicoEnLista} draggableId={cancion.idUnicoEnLista.toString()} index={indexCan}>
+                                                                            <Draggable key={cancion.idUnicoEnLista} draggableId={cancion.idUnicoEnLista.toString()} index={indexCan} isDragDisabled={!isEditMode}>
                                                                                 {(providedDnD) => (
                                                                                     <div className="song-item card" ref={providedDnD.innerRef} {...providedDnD.draggableProps} onClick={() => {
+                                                                                        if (isEditMode) return;
                                                                                         if (listaActiva) {
                                                                                             // Calculate global flat index for Live Mode
                                                                                             let globalIndex = 0;
@@ -873,10 +877,10 @@ export function MisListas() {
                                                                                             setCurrentSongIndex(globalIndex);
                                                                                             setSearchParams({ lista: listaActiva.id.toString(), vista: 'live' });
                                                                                         }
-                                                                                    }} style={{ ...providedDnD.draggableProps.style, cursor: 'pointer' }}>
-                                                                                        <div className="song-item-left">
+                                                                                    }} style={{ ...providedDnD.draggableProps.style, cursor: isEditMode ? 'default' : 'pointer' }}>
+                                                                                        <div className="song-item-left" style={{ cursor: isEditMode ? 'grab' : 'default' }} {...(isEditMode ? providedDnD.dragHandleProps : {})}>
                                                                                             {isEditMode && (
-                                                                                                <span className="drag-handle text-secondary" {...providedDnD.dragHandleProps} title="Arrastrar para reordenar">
+                                                                                                <span className="drag-handle text-secondary" title="Arrastrar para reordenar" style={{ marginRight: '8px' }}>
                                                                                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                                                                                                 </span>
                                                                                             )}

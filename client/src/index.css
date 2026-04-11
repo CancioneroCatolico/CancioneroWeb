@@ -657,8 +657,11 @@ h6 {
   -moz-user-select: none !important;
   -ms-user-select: none !important;
   user-select: none !important;
-  /* Evitar que toque las palabras */
-  touch-action: pan-y !important; /* Desactiva double-tap to zoom y touch to search extra gestures */
+  /* BUGFIX iOS Safari: Evitar el Font Boosting que hace algunas líneas más grandes */
+  -webkit-text-size-adjust: 100% !important;
+  text-size-adjust: 100% !important;
+  /* Evitar que toque las palabras pero permitir scroll y zoom */
+  touch-action: manipulation !important; /* Desactiva double-tap to zoom pero permite pinch to zoom */
 }
 
 /* --- MIS LISTAS MOCKUP --- */

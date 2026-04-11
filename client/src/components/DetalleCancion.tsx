@@ -87,7 +87,16 @@ export function DetalleCancion() {
 
         const updatedLists = currentLists.map((lista: any) => {
             if (lista.id === listaId) {
-                return { ...lista, canciones: [...(lista.canciones || []), cancionAAgregar] };
+                if (lista.secciones) {
+                    const nuevasSecciones = [...lista.secciones];
+                    if (nuevasSecciones.length === 0) {
+                        nuevasSecciones.push({ idSeccion: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(), nombre: 'General', canciones: [] });
+                    }
+                    nuevasSecciones[0] = { ...nuevasSecciones[0], canciones: [...nuevasSecciones[0].canciones, cancionAAgregar] };
+                    return { ...lista, secciones: nuevasSecciones };
+                } else {
+                    return { ...lista, canciones: [...(lista.canciones || []), cancionAAgregar] };
+                }
             }
             return lista;
         });
@@ -125,6 +134,11 @@ export function DetalleCancion() {
         const nuevaLista = {
             id: crypto.randomUUID ? crypto.randomUUID() : Date.now(),
             nombre: newListName.trim(),
+            secciones: [{
+                idSeccion: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+                nombre: 'General',
+                canciones: [cancionAAgregar]
+            }],
             canciones: [cancionAAgregar]
         };
 
