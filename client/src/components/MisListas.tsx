@@ -51,7 +51,13 @@ export function MisListas() {
     const vista = vistaParam || 'dashboard';
     const listaActivaId = listaParam ? (isNaN(Number(listaParam)) ? listaParam : Number(listaParam)) : null;
 
-    const [menuAbiertoId, setMenuAbiertoId] = useState<number | string | null>(null);
+    const [menuAbierto, setMenuAbierto] = useState<{id: number | string, openUpwards: boolean} | null>(null);
+
+    // Dashboard Edit states
+    const [isDashboardEditMode, setIsDashboardEditMode] = useState(false);
+    const [listToRename, setListToRename] = useState<{ id: number | string, nombre: string } | null>(null);
+    const [isRenameListModalOpen, setIsRenameListModalOpen] = useState(false);
+    const [newRenameListName, setNewRenameListName] = useState('');
     const navigate = useNavigate();
 
     // Export/Import/QR features
@@ -113,6 +119,22 @@ export function MisListas() {
         }
         return [];
     });
+
+    // Cerrar menú al hacer clic fuera
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            // Buscamos si el click no ocurrió dentro de un botón de opciones o menú
+            const target = e.target as HTMLElement;
+            if (!target.closest('.list-card-options') && !target.closest('.list-options-menu')) {
+                if (menuAbierto !== null) {
+                    setMenuAbierto(null);
+                }
+            }
+        };
+        // Fase de captura
+        document.addEventListener('click', handleClickOutside, true);
+        return () => document.removeEventListener('click', handleClickOutside, true);
+    }, [menuAbierto]);
 
     // Resetear a dashboard si tocan el botón principal de 'Mis Listas'
     useEffect(() => {
@@ -394,6 +416,28 @@ export function MisListas() {
         return () => window.removeEventListener('popstate', handlePopState);
     }, [isQRModalOpen]);
 
+    // Funciones Modal Renombrar Lista
+    const handleAbrirRenombrarLista = (id: number | string, nombreActual: string) => {
+        setListToRename({ id, nombre: nombreActual });
+        setNewRenameListName(nombreActual);
+        setIsRenameListModalOpen(true);
+    };
+
+    const handleConfirmarRenombrarLista = () => {
+        if (listToRename && newRenameListName.trim() !== '') {
+            setListas(prev => prev.map(l => l.id === listToRename.id ? { ...l, nombre: newRenameListName.trim() } : l));
+            setIsRenameListModalOpen(false);
+            setListToRename(null);
+            setNewRenameListName('');
+        }
+    };
+
+    const handleCancelarRenombrarLista = () => {
+        setIsRenameListModalOpen(false);
+        setListToRename(null);
+        setNewRenameListName('');
+    };
+
     // Funciones Modal Eliminar Lista
     const handleAbrirEliminarLista = (id: number | string, nombre: string) => {
         setListToDelete({ id, nombre });
@@ -542,9 +586,21 @@ export function MisListas() {
     };
 
     const handleOnDragEnd = (result: DropResult) => {
-        if (!result.destination || !listaActivaId) return;
+        if (!result.destination) return;
 
         const { source, destination, type } = result;
+
+        if (type === 'LISTS') {
+            setListas(prev => {
+                const nuevasListas = Array.from(prev);
+                const [reorderedList] = nuevasListas.splice(source.index, 1);
+                nuevasListas.splice(destination.index, 0, reorderedList);
+                return nuevasListas;
+            });
+            return;
+        }
+
+        if (!listaActivaId) return;
 
         setListas(prev => prev.map(lista => {
             if (lista.id === listaActivaId) {
@@ -609,10 +665,32 @@ export function MisListas() {
     };
 
     const renderDashboard = () => (
-        <div className="lists-dashboard animate-fade-in">
+        <div className="lists-dashboard animate-fade-in list-editor">
             <div className="lists-header">
                 <h2>Mis Listas</h2>
                 <div style={{ display: 'flex', gap: '10px' }}>
+                    <button 
+                        className={`btn ${isDashboardEditMode ? 'btn-primary' : 'btn-secondary'}`} 
+                        style={{ 
+                            width: '42px',
+                            height: '42px',
+                            padding: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flex: 'none',
+                            backgroundColor: isDashboardEditMode ? '#ef4444' : undefined, 
+                            borderColor: isDashboardEditMode ? '#ef4444' : undefined,
+                            color: isDashboardEditMode ? 'white' : undefined 
+                        }} 
+                        title={isDashboardEditMode ? 'Terminar Edición' : 'Editar Orden'}
+                        onClick={() => setIsDashboardEditMode(!isDashboardEditMode)}
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 20h9"></path>
+                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                        </svg>
+                    </button>
                     <input 
                         type="file" 
                         accept=".json" 
@@ -640,91 +718,138 @@ export function MisListas() {
                 </button>
             </div>
 
-            <div className="lists-grid">
-                {listas.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--secondary-color)' }}>
-                        No tienes ninguna lista todavía. ¡Crea una para empezar!
-                    </div>
-                ) : (
-                    listas.map(lista => (
-                        <div
-                            key={lista.id}
-                            className="card list-card"
-                            onClick={() => handleAbrirLista(lista.id)}
-                        >
-                            <div className="list-card-content">
-                                <h3 className="list-card-title">{lista.nombre}</h3>
-                                <span className="list-card-count">{lista.secciones?.flatMap(s => s.canciones).length || 0} canciones</span>
-                            </div>
-                            <div style={{ position: 'relative' }}>
-                                <button
-                                    className="btn-icon-small list-card-options"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setMenuAbiertoId(menuAbiertoId === lista.id ? null : lista.id);
-                                    }}
-                                    title="Opciones"
-                                >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <circle cx="12" cy="12" r="1" />
-                                        <circle cx="12" cy="5" r="1" />
-                                        <circle cx="12" cy="19" r="1" />
-                                    </svg>
-                                </button>
-                                {menuAbiertoId === lista.id && (
-                                    <div className="list-options-menu" style={{
-                                        position: 'absolute',
-                                        right: '0',
-                                        top: '100%',
-                                        marginTop: '4px',
-                                        background: 'var(--card-bg)',
-                                        border: '1px solid var(--card-border)',
-                                        borderRadius: '8px',
-                                        padding: '4px',
-                                        zIndex: 10,
-                                        boxShadow: '0 4px 12px var(--card-shadow)',
-                                        minWidth: '120px'
-                                    }}>
-                                        <button
-                                            className="btn-icon-small"
-                                            style={{ width: '100%', justifyContent: 'flex-start', padding: '8px 12px', borderRadius: '4px', fontSize: '14px', textAlign: 'left', marginBottom: '4px' }}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setMenuAbiertoId(null);
-                                                handleExportarListas(lista.id);
-                                            }}
-                                        >
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', display: 'inline-block' }}>
-                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                                <polyline points="17 8 12 3 7 8"></polyline>
-                                                <line x1="12" y1="3" x2="12" y2="15"></line>
-                                            </svg>
-                                            Exportar
-                                        </button>
-                                        <button
-                                            className="btn-icon-small"
-                                            style={{ color: '#ef4444', width: '100%', justifyContent: 'flex-start', padding: '8px 12px', borderRadius: '4px', fontSize: '14px', textAlign: 'left' }}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setMenuAbiertoId(null);
-                                                handleAbrirEliminarLista(lista.id, lista.nombre);
-                                            }}
-                                        >
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', display: 'inline-block' }}>
-                                                <polyline points="3 6 5 6 21 6"></polyline>
-                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                                <line x1="10" y1="11" x2="10" y2="17"></line>
-                                                <line x1="14" y1="11" x2="14" y2="17"></line>
-                                            </svg>
-                                            Eliminar
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
+            <DragDropContext onDragEnd={handleOnDragEnd}>
+                <Droppable droppableId="main-dashboard-lists" type="LISTS">
+                    {(provided) => (
+                        <div className="lists-grid" {...provided.droppableProps} ref={provided.innerRef}>
+                            {listas.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--secondary-color)' }}>
+                                    No tienes ninguna lista todavía. ¡Crea una para empezar!
+                                </div>
+                            ) : (
+                                listas.map((lista, indexList) => (
+                                    <Draggable key={lista.id} draggableId={lista.id.toString()} index={indexList} isDragDisabled={!isDashboardEditMode}>
+                                        {(providedDnD) => (
+                                            <div
+                                                className={`card list-card ${isDashboardEditMode ? 'edit-mode-active' : ''}`}
+                                                ref={providedDnD.innerRef}
+                                                {...providedDnD.draggableProps}
+                                                onClick={() => {
+                                                    if (!isDashboardEditMode) handleAbrirLista(lista.id);
+                                                }}
+                                                style={{ ...providedDnD.draggableProps.style, cursor: isDashboardEditMode ? 'default' : 'pointer' }}
+                                            >
+                                                <div className="list-card-content" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', width: '100%', gap: '10px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', cursor: isDashboardEditMode ? 'grab' : 'default', flex: 1 }} {...(isDashboardEditMode ? providedDnD.dragHandleProps : {})}>
+                                                        {isDashboardEditMode && (
+                                                            <span className="drag-handle text-secondary" style={{ marginRight: '8px' }}>
+                                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                                                            </span>
+                                                        )}
+                                                        <div>
+                                                            <h3 className="list-card-title">{lista.nombre}</h3>
+                                                            <span className="list-card-count">{lista.secciones?.flatMap(s => s.canciones).length || 0} canciones</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div style={{ position: 'relative' }}>
+                                                        <button
+                                                            className="btn-icon-small list-card-options"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (menuAbierto?.id === lista.id) {
+                                                                    setMenuAbierto(null);
+                                                                } else {
+                                                                    const rect = e.currentTarget.getBoundingClientRect();
+                                                                    const spaceBelow = window.innerHeight - rect.bottom;
+                                                                    setMenuAbierto({ id: lista.id, openUpwards: spaceBelow < 150 });
+                                                                }
+                                                            }}
+                                                            title="Opciones"
+                                                        >
+                                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                <circle cx="12" cy="12" r="1" />
+                                                                <circle cx="12" cy="5" r="1" />
+                                                                <circle cx="12" cy="19" r="1" />
+                                                            </svg>
+                                                        </button>
+                                                        {menuAbierto?.id === lista.id && (
+                                                            <div className="list-options-menu" style={{
+                                                                position: 'absolute',
+                                                                right: '0',
+                                                                top: menuAbierto.openUpwards ? 'auto' : '100%',
+                                                                bottom: menuAbierto.openUpwards ? '100%' : 'auto',
+                                                                marginTop: menuAbierto.openUpwards ? '0' : '4px',
+                                                                marginBottom: menuAbierto.openUpwards ? '4px' : '0',
+                                                                background: 'var(--card-bg)',
+                                                                border: '1px solid var(--card-border)',
+                                                                borderRadius: '8px',
+                                                                padding: '4px',
+                                                                zIndex: 10,
+                                                                boxShadow: '0 4px 12px var(--card-shadow)',
+                                                                minWidth: '150px'
+                                                            }}>
+                                                                <button
+                                                                    className="btn-icon-small"
+                                                                    style={{ width: '100%', justifyContent: 'flex-start', padding: '8px 12px', borderRadius: '4px', fontSize: '14px', textAlign: 'left', marginBottom: '4px' }}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setMenuAbierto(null);
+                                                                        handleAbrirRenombrarLista(lista.id, lista.nombre);
+                                                                    }}
+                                                                >
+                                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', display: 'inline-block' }}>
+                                                                        <path d="M12 20h9"></path>
+                                                                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                                                                    </svg>
+                                                                    Editar Nombre
+                                                                </button>
+                                                                <button
+                                                                    className="btn-icon-small"
+                                                                    style={{ width: '100%', justifyContent: 'flex-start', padding: '8px 12px', borderRadius: '4px', fontSize: '14px', textAlign: 'left', marginBottom: '4px' }}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setMenuAbierto(null);
+                                                                        handleExportarListas(lista.id);
+                                                                    }}
+                                                                >
+                                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', display: 'inline-block' }}>
+                                                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                                                    </svg>
+                                                                    Exportar
+                                                                </button>
+                                                                <button
+                                                                    className="btn-icon-small"
+                                                                    style={{ color: '#ef4444', width: '100%', justifyContent: 'flex-start', padding: '8px 12px', borderRadius: '4px', fontSize: '14px', textAlign: 'left' }}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setMenuAbierto(null);
+                                                                        handleAbrirEliminarLista(lista.id, lista.nombre);
+                                                                    }}
+                                                                >
+                                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', display: 'inline-block' }}>
+                                                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                                                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                                                                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                                                                    </svg>
+                                                                    Eliminar
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                            </div>
+                                        )}
+                                    </Draggable>
+                                ))
+                            )}
+                            {provided.placeholder}
                         </div>
-                    ))
-                )}
-            </div>
+                    )}
+                </Droppable>
+            </DragDropContext>
         </div>
     );
 
@@ -1160,6 +1285,28 @@ export function MisListas() {
             {vista === 'dashboard' && renderDashboard()}
             {vista === 'editor' && renderEditor()}
             {vista === 'live' && renderLiveMode()}
+
+            {/* Modal Renombrar Lista */}
+            {isRenameListModalOpen && (
+                <div className="modal-overlay">
+                    <div className="modal-content animate-fade-in">
+                        <h3 className="modal-title">Renombrar Lista</h3>
+                        <input
+                            type="text"
+                            className="modal-input"
+                            placeholder="Nuevo nombre"
+                            autoFocus
+                            value={newRenameListName}
+                            onChange={(e) => setNewRenameListName(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleConfirmarRenombrarLista()}
+                        />
+                        <div className="modal-actions">
+                            <button className="btn btn-secondary" onClick={handleCancelarRenombrarLista}>Cancelar</button>
+                            <button className="btn btn-primary" onClick={handleConfirmarRenombrarLista} disabled={!newRenameListName.trim()}>Guardar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal Nueva Lista */}
             {isNameModalOpen && (

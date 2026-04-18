@@ -43,6 +43,7 @@ export function DetalleCancion() {
     // Estados para Agregar a Lista
     const [isAddListModalOpen, setIsAddListModalOpen] = useState(false);
     const [localLists, setLocalLists] = useState<any[]>([]);
+    const [selectedList, setSelectedList] = useState<any>(null); // Añadido para selección de sección
     const [toastMessage, setToastMessage] = useState('');
     const [isToastVisible, setIsToastVisible] = useState(false);
     const [isCreatingList, setIsCreatingList] = useState(false);
@@ -61,10 +62,11 @@ export function DetalleCancion() {
         }
         setIsAddListModalOpen(true);
         setIsCreatingList(false);
+        setSelectedList(null);
         setNewListName('');
     };
 
-    const handleAddToList = (listaId: number, listaNombre: string) => {
+    const handleAddToList = (listaId: number, listaNombre: string, seccionId: string | number | null = null, createNewSection: boolean = false) => {
         if (!cancion) return;
 
         const saved = localStorage.getItem('cancionero_listas');
@@ -82,27 +84,30 @@ export function DetalleCancion() {
             tipo: 'oficial',
             idCancion: cancion.numeroCancion || cancion._id,
             titulo: cancion.titulo,
-            tonoElegido: cancion.tonoBase
+            tonoElegido: cancion.tonoBase,
+            tonoBase: cancion.tonoBase
         };
 
         const updatedLists = currentLists.map((lista: any) => {
             if (lista.id === listaId) {
-                if (lista.secciones) {
-                    const nuevasSecciones = [...lista.secciones];
-                    if (nuevasSecciones.length === 0) {
-                        nuevasSecciones.push({ idSeccion: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(), nombre: 'General', canciones: [] });
-                    }
-                    nuevasSecciones[0] = { ...nuevasSecciones[0], canciones: [...nuevasSecciones[0].canciones, cancionAAgregar] };
-                    return { ...lista, secciones: nuevasSecciones };
+                let nuevasSecciones = [...(lista.secciones || [])];
+                if (createNewSection || nuevasSecciones.length === 0) {
+                    const nid = seccionId || crypto.randomUUID?.() || Date.now().toString();
+                    nuevasSecciones.push({ idSeccion: nid, nombre: 'General', canciones: [cancionAAgregar] });
+                } else if (seccionId) {
+                    nuevasSecciones = nuevasSecciones.map((s: any) => s.idSeccion === seccionId ? { ...s, canciones: [...s.canciones, cancionAAgregar] } : s);
                 } else {
-                    return { ...lista, canciones: [...(lista.canciones || []), cancionAAgregar] };
+                    // Fallback
+                    nuevasSecciones[0] = { ...nuevasSecciones[0], canciones: [...nuevasSecciones[0].canciones, cancionAAgregar] };
                 }
+                return { ...lista, secciones: nuevasSecciones };
             }
             return lista;
         });
 
         localStorage.setItem('cancionero_listas', JSON.stringify(updatedLists));
         setIsAddListModalOpen(false);
+        setSelectedList(null);
 
         // Mostrar Toast
         setToastMessage(`Añadida a "${listaNombre}"`);
@@ -144,7 +149,7 @@ export function DetalleCancion() {
 
         const updatedLists = [...currentLists, nuevaLista];
         localStorage.setItem('cancionero_listas', JSON.stringify(updatedLists));
-        
+
         setIsCreatingList(false);
         setNewListName('');
         setIsAddListModalOpen(false);
@@ -208,9 +213,21 @@ export function DetalleCancion() {
 
             // Aseguramos que la envoltura interior ocupe todo el espacio pero sin transformaciones CSS problemáticas
             wrapperEl.style.transform = 'none';
-            wrapperEl.style.width = viewMode === 'columns' ? '100%' : 'max-content';
+            wrapperEl.style.width = (isFullscreen || viewMode === 'columns') ? '100%' : 'max-content';
 
-            if (viewMode === 'vertical') {
+            if (isFullscreen) {
+                let currentSize = 3.5; // Tamaño base grande para pantallas completas
+                containerEl.style.fontSize = `${currentSize}em`;
+
+                while (containerEl.scrollWidth > containerEl.clientWidth + 2 && currentSize > 0.1) {
+                    currentSize -= 0.05;
+                    containerEl.style.fontSize = `${currentSize}em`;
+                }
+
+                const finalSize = parseFloat(currentSize.toFixed(2));
+                if (finalSize !== fontSize) setFontSize(finalSize);
+
+            } else if (viewMode === 'vertical') {
                 let currentSize = 1.0;
                 containerEl.style.fontSize = `${currentSize}em`;
 
@@ -362,7 +379,7 @@ export function DetalleCancion() {
                 onMouseMove={isFullscreen ? wakeUpFsControls : undefined}
                 onTouchStart={isFullscreen ? wakeUpFsControls : undefined}
                 style={{
-                    padding: viewMode === 'columns' ? '20px 60px 20px 20px' : '20px',
+                    padding: (isFullscreen || viewMode === 'columns') ? '20px 60px 20px 20px' : '20px',
                     boxSizing: 'border-box',
                     borderRadius: isFullscreen ? '0' : '10px',
                     border: isFullscreen ? 'none' : undefined,
@@ -381,8 +398,8 @@ export function DetalleCancion() {
                     fontSize: `${fontSize}em`,
 
                     // Scroll & Overflow
-                    overflowX: viewMode === 'columns' ? 'auto' : 'visible',
-                    overflowY: viewMode === 'columns' ? 'hidden' : (isFullscreen ? 'auto' : 'visible'),
+                    overflowX: isFullscreen ? 'hidden' : (viewMode === 'columns' ? 'auto' : 'visible'),
+                    overflowY: isFullscreen ? 'hidden' : (viewMode === 'columns' ? 'hidden' : 'visible'),
                 }}
             >
                 {/* Floating Exit Button for Fullscreen (Visible only in FS) */}
@@ -416,12 +433,12 @@ export function DetalleCancion() {
                     ref={innerWrapperRef}
                     style={{
                         // Column logic
-                        display: viewMode === 'columns' ? 'flex' : 'block',
-                        flexDirection: viewMode === 'columns' ? 'column' : undefined,
-                        flexWrap: viewMode === 'columns' ? 'wrap' : undefined,
-                        alignContent: viewMode === 'columns' ? 'flex-start' : undefined,
+                        display: (isFullscreen || viewMode === 'columns') ? 'flex' : 'block',
+                        flexDirection: (isFullscreen || viewMode === 'columns') ? 'column' : undefined,
+                        flexWrap: (isFullscreen || viewMode === 'columns') ? 'wrap' : undefined,
+                        alignContent: (isFullscreen || viewMode === 'columns') ? 'flex-start' : undefined,
                         columnGap: '2em',
-                        height: viewMode === 'columns' ? '100%' : 'auto',
+                        height: (isFullscreen || viewMode === 'columns') ? '100%' : 'auto',
                     }}
                 >
                     {cancion.letra.map((linea, i) => (
@@ -438,7 +455,7 @@ export function DetalleCancion() {
 
             {/* Modal Añadir a Lista */}
             {isAddListModalOpen && (
-                <div className="modal-overlay" onClick={(e) => { if(e.target === e.currentTarget) setIsAddListModalOpen(false); }}>
+                <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setIsAddListModalOpen(false); }}>
                     <div className="modal-content animate-fade-in" style={{ padding: '20px', maxWidth: '350px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                             <h3 className="modal-title" style={{ margin: 0, fontSize: '1.2rem' }}>Añadir a lista</h3>
@@ -465,6 +482,41 @@ export function DetalleCancion() {
                                     <button className="btn btn-primary" onClick={handleCrearYAnadir} disabled={!newListName.trim()}>Crear y Añadir</button>
                                 </div>
                             </div>
+                        ) : selectedList ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <p style={{ margin: '0 0 12px 0', color: 'var(--secondary-color)', fontSize: '0.9rem' }}>Elige la sección en "{selectedList.nombre}":</p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+                                    {selectedList.secciones && selectedList.secciones.length > 0 ? (
+                                        selectedList.secciones.map((seccion: any) => (
+                                            <button
+                                                key={seccion.idSeccion}
+                                                className="btn"
+                                                style={{
+                                                    justifyContent: 'flex-start',
+                                                    backgroundColor: 'var(--bg-color)',
+                                                    border: '1px solid var(--card-border)',
+                                                    padding: '10px 16px',
+                                                    color: 'var(--text-color)',
+                                                    textAlign: 'left'
+                                                }}
+                                                onClick={() => handleAddToList(selectedList.id, selectedList.nombre, seccion.idSeccion)}
+                                            >
+                                                <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
+                                                    {seccion.nombre || 'General'}
+                                                </div>
+                                            </button>
+                                        ))
+                                    ) : (
+                                        <div style={{ textAlign: 'center', color: 'var(--secondary-color)', padding: '10px 0' }}>Esta lista no tiene secciones aún.</div>
+                                    )}
+                                </div>
+                                <button className="btn btn-primary" style={{ marginTop: '8px', justifyContent: 'center' }} onClick={() => handleAddToList(selectedList.id, selectedList.nombre, crypto.randomUUID?.() || Date.now().toString(), true)}>
+                                    + Nueva Sección
+                                </button>
+                                <button className="btn-secondary" style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '8px', border: 'none', background: 'transparent', cursor: 'pointer' }} onClick={() => setSelectedList(null)}>
+                                    Volver
+                                </button>
+                            </div>
                         ) : (
                             <>
                                 {localLists.length === 0 ? (
@@ -474,7 +526,7 @@ export function DetalleCancion() {
                                 ) : (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto', marginBottom: '16px' }}>
                                         {localLists.map(lista => (
-                                            <button 
+                                            <button
                                                 key={lista.id}
                                                 className="btn"
                                                 style={{
@@ -485,7 +537,13 @@ export function DetalleCancion() {
                                                     color: 'var(--text-color)',
                                                     textAlign: 'left'
                                                 }}
-                                                onClick={() => handleAddToList(lista.id, lista.nombre)}
+                                                onClick={() => {
+                                                    if (lista.secciones && lista.secciones.length > 0) {
+                                                        setSelectedList(lista);
+                                                    } else {
+                                                        handleAddToList(lista.id, lista.nombre, null, true);
+                                                    }
+                                                }}
                                             >
                                                 <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
                                                     {lista.nombre}

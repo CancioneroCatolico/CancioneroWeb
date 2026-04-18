@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useBusqueda } from '../context/BusquedaContext';
 import { useTheme } from '../context/ThemeContext';
@@ -10,9 +10,36 @@ export function Layout() {
     const { theme, toggleTheme } = useTheme();
     const [menuOpen, setMenuOpen] = useState(false);
     const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+    const [navHidden, setNavHidden] = useState(false);
 
     // Referencia para scroll top en móvil
     const topRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        let lastScrollY = window.scrollY;
+
+        const handleScroll = () => {
+            // Si hay algún menú o modal abierto, evitamos que se oculte
+            if (menuOpen || mobileSearchOpen) {
+                return;
+            }
+
+            const currentScrollY = window.scrollY;
+            
+            // Ocultamos si scrollea para abajo y ya pasó los primeros 60px (la altura del header)
+            if (currentScrollY > lastScrollY && currentScrollY > 60) {
+                setNavHidden(true);
+            } else if (currentScrollY < lastScrollY) {
+                // Mostramos si scrollea para arriba
+                setNavHidden(false);
+            }
+            
+            lastScrollY = currentScrollY;
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [menuOpen, mobileSearchOpen]);
 
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -33,7 +60,7 @@ export function Layout() {
     return (
         <div style={{ paddingBottom: '70px', minHeight: '100vh' }} ref={topRef}>
             {/* NAVBAR SUPERIOR (STICKY) */}
-            <nav className="app-navbar-container">
+            <nav className={`app-navbar-container ${navHidden ? 'navbar-hidden' : ''}`}>
                 <div className="app-navbar">
 
                     {/* MODO BÚSQUEDA MÓVIL ACTIVADO */}

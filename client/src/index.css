@@ -252,7 +252,12 @@ h6 {
   position: sticky;
   top: 0;
   z-index: 50;
-  transition: all 0.3s ease;
+  /* Utilizamos una transición transform explícita de 0.3s para mayor fluidez, y background-color por si cambia el tema */
+  transition: transform 0.3s ease, background-color 0.3s ease; 
+}
+
+.navbar-hidden {
+  transform: translateY(-100%);
 }
 
 .app-navbar {
@@ -1191,6 +1196,12 @@ h6 {
 /* Custom styles for List Editor Mode */
 .edit-mode-active {
   position: relative;
+}
+
+.edit-mode-active.list-card {
+  outline: 1px dashed var(--primary-color);
+  background-color: var(--input-bg);
+  transition: background-color 0.15s ease, outline-color 0.15s ease;
 }
 
 .edit-mode-active .seccion-container {
