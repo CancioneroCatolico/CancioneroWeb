@@ -16,7 +16,7 @@ export default defineConfig({
       manifest: {
         name: 'Cancionero Católico',
         short_name: 'Cancionero',
-        description: 'Cancionero Católico Moderno',
+        description: 'Cancionero Católico',
         theme_color: '#1a1a1a', // Ajusta según tu diseño (modo oscuro o color principal ej: #ED8C2F)
         background_color: '#ffffff',
         display: 'standalone',
