@@ -14,9 +14,9 @@ export default defineConfig({
       },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Cancionero San Francisco',
+        name: 'Cancionero Católico',
         short_name: 'Cancionero',
-        description: 'Cancionero Católico San Francisco',
+        description: 'Cancionero Católico Moderno',
         theme_color: '#1a1a1a', // Ajusta según tu diseño (modo oscuro o color principal ej: #ED8C2F)
         background_color: '#ffffff',
         display: 'standalone',
