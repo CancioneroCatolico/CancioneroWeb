@@ -473,7 +473,11 @@ export function MisListas() {
         if (!listaActiva) return;
 
         if (listaActiva.secciones.length === 0) {
-            handleConfirmarAgregarCancionASeccion(cancion, Date.now(), true);
+            setSongToAdd(cancion);
+            setSectionToEdit(null);
+            setNewSectionName('');
+            setIsSectionModalOpen(true);
+            handleCerrarBuscador();
         } else {
             setSongToAdd(cancion);
             setIsSelectSectionModalOpen(true);
@@ -481,7 +485,47 @@ export function MisListas() {
         }
     };
 
-    const handleConfirmarAgregarCancionASeccion = (cancion: any, idSeccion: string | number, createNew = false) => {
+    const handleSaveSection = () => {
+        if (!newSectionName.trim() || !listaActivaId) return;
+
+        const sectionId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+        const sectionName = newSectionName.trim();
+
+        setListas(prev => prev.map(lista => {
+            if (lista.id === listaActivaId) {
+                if (sectionToEdit) {
+                    return { 
+                        ...lista, 
+                        secciones: lista.secciones.map(s => s.idSeccion === sectionToEdit.idSeccion ? { ...s, nombre: sectionName } : s) 
+                    };
+                } else {
+                    const cancionAgregar = songToAdd ? {
+                        idUnicoEnLista: Date.now(),
+                        tipo: 'oficial',
+                        idCancion: songToAdd.numeroCancion || songToAdd.id,
+                        titulo: songToAdd.titulo,
+                        tonoElegido: songToAdd.tonoBase,
+                        tonoBase: songToAdd.tonoBase
+                    } : null;
+
+                    const nuevaSeccion: SeccionItem = { 
+                        idSeccion: sectionId, 
+                        nombre: sectionName, 
+                        canciones: cancionAgregar ? [cancionAgregar] : [] 
+                    };
+                    return { ...lista, secciones: [...lista.secciones, nuevaSeccion] };
+                }
+            }
+            return lista;
+        }));
+
+        setSongToAdd(null);
+        setIsSectionModalOpen(false);
+        setNewSectionName('');
+        setImportMessage({ title: '¡Canción añadida!', text: `Se creó la sección "${sectionName}" con la canción.` });
+    };
+
+    const handleConfirmarAgregarCancionASeccion = (cancion: any, idSeccion: string | number) => {
         const cancionAgregar = {
             idUnicoEnLista: Date.now(),
             tipo: 'oficial',
@@ -493,12 +537,9 @@ export function MisListas() {
 
         setListas(prev => prev.map(lista => {
             if (lista.id === listaActivaId) {
-                let nuevasSecciones = [...lista.secciones];
-                if (createNew) {
-                    nuevasSecciones.push({ idSeccion, nombre: 'General', canciones: [cancionAgregar] });
-                } else {
-                    nuevasSecciones = nuevasSecciones.map(s => s.idSeccion === idSeccion ? { ...s, canciones: [...s.canciones, cancionAgregar] } : s);
-                }
+                const nuevasSecciones = lista.secciones.map(s => 
+                    s.idSeccion === idSeccion ? { ...s, canciones: [...s.canciones, cancionAgregar] } : s
+                );
                 return { ...lista, secciones: nuevasSecciones };
             }
             return lista;
@@ -507,6 +548,7 @@ export function MisListas() {
         setSongToAdd(null);
         setIsSelectSectionModalOpen(false);
         handleCerrarBuscador();
+        setImportMessage({ title: '¡Canción añadida!', text: 'La canción fue añadida a la sección correctamente.' });
     };
 
     const handleEliminarCancion = (idUnicoEnLista: number | string) => {
@@ -645,8 +687,9 @@ export function MisListas() {
     // Filtrado de Búsqueda
     const searchResultados = searchQuery.trim() === '' ? [] : cancionesOficiales.filter(c => {
         const busquedaNormalizada = normalizar(searchQuery);
-        return normalizar(c.titulo).includes(busquedaNormalizada);
-    }); // Sin límite para que aparezcan todas y solo busca en título
+        return normalizar(c.titulo).includes(busquedaNormalizada) || 
+               (c.numeroCancion?.toString().includes(busquedaNormalizada) ?? false);
+    }); // Sin límite para que aparezcan todas y busca en título y número de canción
 
     const handleAbrirLista = (id: number | string) => {
         setSearchParams({ lista: id.toString(), vista: 'editor' });
@@ -737,7 +780,11 @@ export function MisListas() {
                                                 onClick={() => {
                                                     if (!isDashboardEditMode) handleAbrirLista(lista.id);
                                                 }}
-                                                style={{ ...providedDnD.draggableProps.style, cursor: isDashboardEditMode ? 'default' : 'pointer' }}
+                                                style={{ 
+                                                    ...providedDnD.draggableProps.style, 
+                                                    cursor: isDashboardEditMode ? 'default' : 'pointer',
+                                                    zIndex: menuAbierto?.id === lista.id ? 100 : 1
+                                                } as React.CSSProperties}
                                             >
                                                 <div className="list-card-content" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', width: '100%', gap: '10px' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', cursor: isDashboardEditMode ? 'grab' : 'default', flex: 1 }} {...(isDashboardEditMode ? providedDnD.dragHandleProps : {})}>
@@ -785,7 +832,7 @@ export function MisListas() {
                                                                 border: '1px solid var(--card-border)',
                                                                 borderRadius: '8px',
                                                                 padding: '4px',
-                                                                zIndex: 10,
+                                                                zIndex: 1000,
                                                                 boxShadow: '0 4px 12px var(--card-shadow)',
                                                                 minWidth: '150px'
                                                             }}>
@@ -1389,7 +1436,10 @@ export function MisListas() {
                                         onClick={() => handleAgregarCancion(cancion)}
                                     >
                                         <div>
-                                            <div style={{ fontWeight: 600 }}>{cancion.titulo}</div>
+                                            <div style={{ fontWeight: 600 }}>
+                                                <span style={{ color: 'var(--primary-color)', marginRight: '8px' }}>#{cancion.numeroCancion}</span>
+                                                {cancion.titulo}
+                                            </div>
                                             <div style={{ fontSize: '0.85rem', color: 'var(--secondary-color)' }}>{cancion.autor} • Tono: {cancion.tonoBase}</div>
                                         </div>
                                         <button className="btn-icon-small" style={{ color: 'var(--primary-color)' }}>
@@ -1481,39 +1531,15 @@ export function MisListas() {
                             value={newSectionName}
                             onChange={(e) => setNewSectionName(e.target.value)}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter' && newSectionName.trim()) {
-                                    if (!newSectionName.trim() || !listaActivaId) return;
-                                    setListas(prev => prev.map(lista => {
-                                        if (lista.id === listaActivaId) {
-                                            if (sectionToEdit) {
-                                                return { ...lista, secciones: lista.secciones.map(s => s.idSeccion === sectionToEdit.idSeccion ? { ...s, nombre: newSectionName.trim() } : s) };
-                                            } else {
-                                                return { ...lista, secciones: [...lista.secciones, { idSeccion: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(), nombre: newSectionName.trim(), canciones: [] }] };
-                                            }
-                                        }
-                                        return lista;
-                                    }));
-                                    setIsSectionModalOpen(false);
+                                if (e.key === 'Enter') {
+                                    handleSaveSection();
                                 }
                             }}
                             autoFocus
                         />
                         <div className="modal-actions">
                             <button className="btn btn-secondary" onClick={() => setIsSectionModalOpen(false)}>Cancelar</button>
-                            <button className="btn btn-primary" disabled={!newSectionName.trim()} onClick={() => {
-                                if (!newSectionName.trim() || !listaActivaId) return;
-                                setListas(prev => prev.map(lista => {
-                                    if (lista.id === listaActivaId) {
-                                        if (sectionToEdit) {
-                                            return { ...lista, secciones: lista.secciones.map(s => s.idSeccion === sectionToEdit.idSeccion ? { ...s, nombre: newSectionName.trim() } : s) };
-                                        } else {
-                                            return { ...lista, secciones: [...lista.secciones, { idSeccion: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(), nombre: newSectionName.trim(), canciones: [] }] };
-                                        }
-                                    }
-                                    return lista;
-                                }));
-                                setIsSectionModalOpen(false);
-                            }}>Guardar</button>
+                            <button className="btn btn-primary" disabled={!newSectionName.trim()} onClick={handleSaveSection}>Guardar</button>
                         </div>
                     </div>
                 </div>
@@ -1551,7 +1577,10 @@ export function MisListas() {
                                 </button>
                             ))}
                             <button className="btn btn-primary" style={{marginTop: '8px'}} onClick={() => {
-                                handleConfirmarAgregarCancionASeccion(songToAdd, crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(), true);
+                                setIsSelectSectionModalOpen(false);
+                                setSectionToEdit(null);
+                                setNewSectionName('');
+                                setIsSectionModalOpen(true);
                             }}>
                                 + Nueva Sección
                             </button>

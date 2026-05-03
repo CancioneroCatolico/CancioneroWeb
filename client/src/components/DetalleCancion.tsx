@@ -43,11 +43,17 @@ export function DetalleCancion() {
     // Estados para Agregar a Lista
     const [isAddListModalOpen, setIsAddListModalOpen] = useState(false);
     const [localLists, setLocalLists] = useState<any[]>([]);
-    const [selectedList, setSelectedList] = useState<any>(null); // Añadido para selección de sección
+    const [selectedList, setSelectedList] = useState<any>(null);
     const [toastMessage, setToastMessage] = useState('');
     const [isToastVisible, setIsToastVisible] = useState(false);
     const [isCreatingList, setIsCreatingList] = useState(false);
     const [newListName, setNewListName] = useState('');
+
+    // Estados para modal de nueva sección desde DetalleCancion
+    const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
+    const [pendingSectionListId, setPendingSectionListId] = useState<number | null>(null);
+    const [pendingSectionListName, setPendingSectionListName] = useState('');
+    const [pendingSectionName, setPendingSectionName] = useState('');
 
     // Cargar listas al abrir el modal
     const handleOpenAddListModal = () => {
@@ -66,7 +72,7 @@ export function DetalleCancion() {
         setNewListName('');
     };
 
-    const handleAddToList = (listaId: number, listaNombre: string, seccionId: string | number | null = null, createNewSection: boolean = false) => {
+    const handleAddToList = (listaId: number, listaNombre: string, seccionId: string | number | null = null) => {
         if (!cancion) return;
 
         const saved = localStorage.getItem('cancionero_listas');
@@ -90,16 +96,9 @@ export function DetalleCancion() {
 
         const updatedLists = currentLists.map((lista: any) => {
             if (lista.id === listaId) {
-                let nuevasSecciones = [...(lista.secciones || [])];
-                if (createNewSection || nuevasSecciones.length === 0) {
-                    const nid = seccionId || crypto.randomUUID?.() || Date.now().toString();
-                    nuevasSecciones.push({ idSeccion: nid, nombre: 'General', canciones: [cancionAAgregar] });
-                } else if (seccionId) {
-                    nuevasSecciones = nuevasSecciones.map((s: any) => s.idSeccion === seccionId ? { ...s, canciones: [...s.canciones, cancionAAgregar] } : s);
-                } else {
-                    // Fallback
-                    nuevasSecciones[0] = { ...nuevasSecciones[0], canciones: [...nuevasSecciones[0].canciones, cancionAAgregar] };
-                }
+                const nuevasSecciones = (lista.secciones || []).map((s: any) =>
+                    s.idSeccion === seccionId ? { ...s, canciones: [...s.canciones, cancionAAgregar] } : s
+                );
                 return { ...lista, secciones: nuevasSecciones };
             }
             return lista;
@@ -109,23 +108,18 @@ export function DetalleCancion() {
         setIsAddListModalOpen(false);
         setSelectedList(null);
 
-        // Mostrar Toast
         setToastMessage(`Añadida a "${listaNombre}"`);
         setIsToastVisible(true);
         setTimeout(() => setIsToastVisible(false), 3000);
     };
 
-    const handleCrearYAnadir = () => {
-        if (!newListName.trim() || !cancion) return;
+    const handleConfirmarNuevaSeccion = () => {
+        if (!pendingSectionName.trim() || !pendingSectionListId || !cancion) return;
 
         const saved = localStorage.getItem('cancionero_listas');
         let currentLists = [];
         if (saved) {
-            try {
-                currentLists = JSON.parse(saved);
-            } catch (e) {
-                console.error("Error parseando listas", e);
-            }
+            try { currentLists = JSON.parse(saved); } catch (e) { /* noop */ }
         }
 
         const cancionAAgregar = {
@@ -133,30 +127,58 @@ export function DetalleCancion() {
             tipo: 'oficial',
             idCancion: cancion.numeroCancion || cancion._id,
             titulo: cancion.titulo,
-            tonoElegido: cancion.tonoBase
+            tonoElegido: cancion.tonoBase,
+            tonoBase: cancion.tonoBase
         };
 
-        const nuevaLista = {
-            id: crypto.randomUUID ? crypto.randomUUID() : Date.now(),
-            nombre: newListName.trim(),
-            secciones: [{
-                idSeccion: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
-                nombre: 'General',
-                canciones: [cancionAAgregar]
-            }],
-            canciones: [cancionAAgregar]
-        };
+        const newSeccionId = crypto.randomUUID?.() || Date.now().toString();
+        const updatedLists = currentLists.map((lista: any) => {
+            if (lista.id === pendingSectionListId) {
+                const nuevaSeccion = { idSeccion: newSeccionId, nombre: pendingSectionName.trim(), canciones: [cancionAAgregar] };
+                return { ...lista, secciones: [...(lista.secciones || []), nuevaSeccion] };
+            }
+            return lista;
+        });
 
-        const updatedLists = [...currentLists, nuevaLista];
         localStorage.setItem('cancionero_listas', JSON.stringify(updatedLists));
+        setIsSectionModalOpen(false);
+        setIsAddListModalOpen(false);
+        setSelectedList(null);
+        setPendingSectionName('');
 
+        setToastMessage(`Añadida a "${pendingSectionListName}"`);
+        setIsToastVisible(true);
+        setTimeout(() => setIsToastVisible(false), 3000);
+    };
+
+    const handleCrearYAnadir = () => {
+        if (!newListName.trim() || !cancion) return;
+
+        // Al crear lista nueva, también pedimos el nombre de sección
+        const listId = crypto.randomUUID ? crypto.randomUUID() : Date.now();
+        const listName = newListName.trim();
+
+        const saved = localStorage.getItem('cancionero_listas');
+        let currentLists = [];
+        if (saved) {
+            try { currentLists = JSON.parse(saved); } catch (e) { /* noop */ }
+        }
+
+        // Crear lista vacía (sin sección aún)
+        const nuevaLista = { id: listId, nombre: listName, secciones: [] };
+        localStorage.setItem('cancionero_listas', JSON.stringify([...currentLists, nuevaLista]));
+
+        // Recargar y abrir modal de sección
+        setLocalLists([...currentLists, nuevaLista]);
         setIsCreatingList(false);
         setNewListName('');
         setIsAddListModalOpen(false);
 
-        setToastMessage(`Añadida a "${nuevaLista.nombre}"`);
-        setIsToastVisible(true);
-        setTimeout(() => setIsToastVisible(false), 3000);
+        // Abrir el modal de nueva sección para esta lista recién creada
+        setPendingSectionListId(listId as unknown as number);
+        setPendingSectionListName(listName);
+        setPendingSectionName('');
+        setIsSectionModalOpen(true);
     };
 
     useEffect(() => {
@@ -510,7 +532,14 @@ export function DetalleCancion() {
                                         <div style={{ textAlign: 'center', color: 'var(--secondary-color)', padding: '10px 0' }}>Esta lista no tiene secciones aún.</div>
                                     )}
                                 </div>
-                                <button className="btn btn-primary" style={{ marginTop: '8px', justifyContent: 'center' }} onClick={() => handleAddToList(selectedList.id, selectedList.nombre, crypto.randomUUID?.() || Date.now().toString(), true)}>
+                                <button className="btn btn-primary" style={{ marginTop: '8px', justifyContent: 'center' }} onClick={() => {
+                                    setPendingSectionListId(selectedList.id);
+                                    setPendingSectionListName(selectedList.nombre);
+                                    setPendingSectionName('');
+                                    setIsAddListModalOpen(false);
+                                    setSelectedList(null);
+                                    setIsSectionModalOpen(true);
+                                }}>
                                     + Nueva Sección
                                 </button>
                                 <button className="btn-secondary" style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '8px', border: 'none', background: 'transparent', cursor: 'pointer' }} onClick={() => setSelectedList(null)}>
@@ -541,7 +570,12 @@ export function DetalleCancion() {
                                                     if (lista.secciones && lista.secciones.length > 0) {
                                                         setSelectedList(lista);
                                                     } else {
-                                                        handleAddToList(lista.id, lista.nombre, null, true);
+                                                        // Lista sin secciones: pedir nombre de sección
+                                                        setPendingSectionListId(lista.id);
+                                                        setPendingSectionListName(lista.nombre);
+                                                        setPendingSectionName('');
+                                                        setIsAddListModalOpen(false);
+                                                        setIsSectionModalOpen(true);
                                                     }
                                                 }}
                                             >
@@ -561,6 +595,28 @@ export function DetalleCancion() {
                                 </button>
                             </>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Nueva Sección (desde DetalleCancion) */}
+            {isSectionModalOpen && (
+                <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setIsSectionModalOpen(false); }}>
+                    <div className="modal-content animate-fade-in">
+                        <h3 className="modal-title">Nueva Sección</h3>
+                        <input
+                            type="text"
+                            className="modal-input"
+                            placeholder="Nombre de la sección (Ej: Comunión)"
+                            value={pendingSectionName}
+                            onChange={(e) => setPendingSectionName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmarNuevaSeccion(); }}
+                            autoFocus
+                        />
+                        <div className="modal-actions">
+                            <button className="btn btn-secondary" onClick={() => setIsSectionModalOpen(false)}>Cancelar</button>
+                            <button className="btn btn-primary" disabled={!pendingSectionName.trim()} onClick={handleConfirmarNuevaSeccion}>Guardar</button>
+                        </div>
                     </div>
                 </div>
             )}

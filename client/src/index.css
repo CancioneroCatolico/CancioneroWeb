@@ -38,6 +38,10 @@
   --font-body: 'Noto Sans', sans-serif;
 }
 
+* {
+  box-sizing: border-box;
+}
+
 /* TEMA OSCURO */
 .dark {
   /* Dark Mode */
@@ -487,26 +491,6 @@ h6 {
   to {
     transform: translateY(0);
   }
-}
-
-/* BOTÓN FLOTANTE TEMA (DESKTOP) */
-.theme-toggle-desktop {
-  position: fixed;
-  bottom: 30px;
-  right: 30px;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-  font-size: 1.5em;
-  background-color: var(--card-bg);
-  border: 1px solid var(--card-border);
-  display: flex;
-  /* Default desktop */
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
 }
 
 /* --- MEDIA QUERIES --- */
@@ -1227,4 +1211,20 @@ h6 {
 
 .btn-text:hover {
   background-color: var(--button-hover);
+}
+
+/* ===================== Animaciones ===================== */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out both;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
 }

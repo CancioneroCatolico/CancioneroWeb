@@ -1,19 +1,31 @@
 import { useState, useRef, useEffect } from 'react';
-import { Outlet, Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Outlet, Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useBusqueda } from '../context/BusquedaContext';
 import { useTheme } from '../context/ThemeContext';
 
 export function Layout() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchParams] = useSearchParams();
     const { termino, setTermino } = useBusqueda();
     const { theme, toggleTheme } = useTheme();
     const [menuOpen, setMenuOpen] = useState(false);
     const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
     const [navHidden, setNavHidden] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const mobileMenuRef = useRef<HTMLDivElement>(null);
 
     // Referencia para scroll top en móvil
     const topRef = useRef<HTMLDivElement>(null);
+
+    // Sincronizar el contexto de búsqueda con la URL (incluyendo navegación con Atrás)
+    useEffect(() => {
+        const qFromUrl = searchParams.get('q') || '';
+        if (qFromUrl !== termino) {
+            setTermino(qFromUrl);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location.search]);
 
     useEffect(() => {
         let lastScrollY = window.scrollY;
@@ -41,20 +53,51 @@ export function Layout() {
         return () => window.removeEventListener('scroll', handleScroll);
     }, [menuOpen, mobileSearchOpen]);
 
-    const handleSearchSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    // Cerrar menú al hacer clic fuera (Desktop)
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const isOutsideDesktop = menuRef.current && !menuRef.current.contains(event.target as Node);
+            const isOutsideMobile = mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node);
+            
+            // Si el clic es fuera de AMBOS menús (desktop y móvil), cerramos
+            if (isOutsideDesktop && isOutsideMobile) {
+                setMenuOpen(false);
+            }
+        };
 
-        if (!termino.trim()) {
-            // Si el buscador está vacío, limpiamos la búsqueda volviendo por defecto a /buscar
-            navigate('/buscar');
-        } else {
-            const params = new URLSearchParams(searchParams);
-            params.set('q', termino);
-            navigate(`/buscar?${params.toString()}`);
+        if (menuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
         }
 
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [menuOpen]);
+
+    const handleSearchSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        // Ya se filtra en vivo, así que solo cerramos menús si fuera necesario
         setMobileSearchOpen(false);
         setMenuOpen(false);
+    };
+
+    const handleSearchChange = (val: string) => {
+        setTermino(val);
+
+        const params = new URLSearchParams(searchParams);
+        if (val.trim() !== '') {
+            params.set('q', val);
+            if (location.pathname !== '/') {
+                navigate(`/?${params.toString()}`);
+            } else {
+                navigate(`/?${params.toString()}`, { replace: true });
+            }
+        } else {
+            params.delete('q');
+            if (location.pathname === '/') {
+                navigate(`/?${params.toString()}`, { replace: true });
+            }
+        }
     };
 
     return (
@@ -72,28 +115,11 @@ export function Layout() {
                                     className="input-search"
                                     placeholder="Buscar..."
                                     value={termino}
-                                    onChange={(e) => setTermino(e.target.value)}
+                                    onChange={(e) => handleSearchChange(e.target.value)}
                                     autoFocus
                                 />
                             </form>
-                            <Link
-                                to="/buscar"
-                                className="btn-icon search-filter-btn"
-                                title="Búsqueda Avanzada"
-                                onClick={() => { setMobileSearchOpen(false); setMenuOpen(false); }}
-                            >
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="4" y1="21" x2="4" y2="14" />
-                                    <line x1="4" y1="10" x2="4" y2="3" />
-                                    <line x1="12" y1="21" x2="12" y2="12" />
-                                    <line x1="12" y1="8" x2="12" y2="3" />
-                                    <line x1="20" y1="21" x2="20" y2="16" />
-                                    <line x1="20" y1="12" x2="20" y2="3" />
-                                    <line x1="1" y1="14" x2="7" y2="14" />
-                                    <line x1="9" y1="8" x2="15" y2="8" />
-                                    <line x1="17" y1="16" x2="23" y2="16" />
-                                </svg>
-                            </Link>
+
                         </div>
                     ) : (
                         /* CABECERA NORMAL */
@@ -114,30 +140,14 @@ export function Layout() {
                                         className="input-search"
                                         placeholder="Buscar..."
                                         value={termino}
-                                        onChange={(e) => setTermino(e.target.value)}
+                                        onChange={(e) => handleSearchChange(e.target.value)}
                                     />
                                 </form>
-                                <Link
-                                    to="/buscar"
-                                    className="btn-icon search-filter-btn"
-                                    title="Búsqueda Avanzada"
-                                >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <line x1="4" y1="21" x2="4" y2="14" />
-                                        <line x1="4" y1="10" x2="4" y2="3" />
-                                        <line x1="12" y1="21" x2="12" y2="12" />
-                                        <line x1="12" y1="8" x2="12" y2="3" />
-                                        <line x1="20" y1="21" x2="20" y2="16" />
-                                        <line x1="20" y1="12" x2="20" y2="3" />
-                                        <line x1="1" y1="14" x2="7" y2="14" />
-                                        <line x1="9" y1="8" x2="15" y2="8" />
-                                        <line x1="17" y1="16" x2="23" y2="16" />
-                                    </svg>
-                                </Link>
+
                             </div>
 
-                            {/* MENU DESKTOP */}
-                            <div className="desktop-nav-links" style={{ position: 'relative' }}>
+                             {/* MENU DESKTOP */}
+                             <div className="desktop-nav-links" style={{ position: 'relative' }} ref={menuRef}>
                                 <button className="btn-icon" onClick={() => setMenuOpen(!menuOpen)} title="Menú">
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -151,7 +161,9 @@ export function Layout() {
                                     <div className="desktop-dropdown-menu desktop-only-flex">
                                         <Link to="/" className="desktop-dropdown-item" onClick={() => setMenuOpen(false)}>Inicio</Link>
                                         <Link to="/mis-listas" className="desktop-dropdown-item" onClick={() => { setMenuOpen(false); window.dispatchEvent(new CustomEvent('reset-mis-listas')); }}>Mis Listas</Link>
-                                        {/* El botón de Tema ya está visible como FAB en Desktop, acorde al requierimiento */}
+                                        <div className="desktop-dropdown-item" onClick={() => { toggleTheme(); setMenuOpen(false); }} style={{ cursor: 'pointer' }}>
+                                            {theme === 'light' ? '🌙 Modo Oscuro' : '☀️ Modo Claro'}
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -169,7 +181,7 @@ export function Layout() {
             {menuOpen && (
                 <div className="mobile-menu-overlay mobile-only-flex">
                     <button className="close-menu-area" onClick={() => setMenuOpen(false)} aria-label="Cerrar menú"></button>
-                    <div className="mobile-menu-content">
+                    <div className="mobile-menu-content" ref={mobileMenuRef}>
                         <div className="mobile-menu-header">
                             <h2>Menú</h2>
                             <button className="close-menu-btn-inside" onClick={() => setMenuOpen(false)}>✕</button>
@@ -180,7 +192,7 @@ export function Layout() {
                         <Link to="/mis-listas" className="mobile-menu-item" onClick={() => { setMenuOpen(false); window.dispatchEvent(new CustomEvent('reset-mis-listas')); }}>
                             Mis Listas
                         </Link>
-                        <div className="mobile-menu-item" onClick={toggleTheme}>
+                        <div className="mobile-menu-item" onClick={() => { toggleTheme(); setMenuOpen(false); }}>
                             {theme === 'light' ? '🌙 Modo Oscuro' : '☀️ Modo Claro'}
                         </div>
                     </div>
@@ -237,15 +249,6 @@ export function Layout() {
                     <span className="bottom-label">Menú</span>
                 </button>
             </div>
-
-            {/* BOTÓN TEMA DESKTOP */}
-            <button
-                onClick={toggleTheme}
-                className="btn-icon theme-toggle-desktop"
-                title="Cambiar Tema"
-            >
-                {theme === 'light' ? '🌙' : '☀️'}
-            </button>
         </div>
     );
 }
