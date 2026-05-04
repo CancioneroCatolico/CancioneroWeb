@@ -1,0 +1,23 @@
+# Cancionero Web - AI Master Instructions
+
+Bienvenido al proyecto **Cancionero Web**. Para trabajar de manera efectiva, por favor lee y sigue las instrucciones detalladas en la carpeta `.ai_instructions/`.
+
+## 📚 Guías Detalladas
+- **General & Tech Stack**: Lee `.ai_instructions/01-general-rules.md` para estándares de código y arquitectura.
+- **UI/UX & Design**: Lee `.ai_instructions/02-frontend-design.md` para guías estéticas y de diseño premium.
+- **Music Logic**: Lee `.ai_instructions/03-domain-logic.md` para entender cómo manejar acordes y transporte.
+
+## 🎯 Objetivos Principales
+1. Mantener una **Estética Premium** (Glassmorphism, Dark Mode, Animaciones).
+2. Asegurar **Máxima Legibilidad** para músicos en vivo.
+3. Escribir **TypeScript Estricto** y React moderno.
+4. Optimizar para **PWA** y uso offline.
+
+## 🚫 No hagas esto
+- No uses TailwindCSS (usamos Vanilla CSS + Custom Properties).
+- No hardcodees colores.
+- No rompas la lógica de parseo de acordes sin consultar.
+- No añadidas dependencias pesadas innecesariamente.
+
+---
+*Este archivo sirve como punto de entrada para la IA. Mantén la coherencia con la visión del proyecto en cada cambio.*
