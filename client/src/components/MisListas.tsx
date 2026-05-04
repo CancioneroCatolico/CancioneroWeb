@@ -755,10 +755,6 @@ export function MisListas() {
                         </svg>
                     </button>
                 </div>
-                <button className="btn btn-primary btn-fab mobile-only-flex" style={{ bottom: '80px', right: '20px' }} onClick={handleAbrirCrearLista}>
-                    <span className="fab-icon" style={{ display: 'block' }}>+</span>
-                    <span className="fab-text">Nueva Lista</span>
-                </button>
             </div>
 
             <DragDropContext onDragEnd={handleOnDragEnd}>
@@ -1129,9 +1125,7 @@ export function MisListas() {
                     </button>
                 </div>
 
-                <button className="btn btn-primary btn-fab mobile-only-flex" style={{ bottom: '80px', right: '20px' }} onClick={handleAbrirBuscador}>
-                    <span className="fab-icon" style={{ display: 'block' }}>+</span>
-                </button>
+
             </div>
         );
     };
@@ -1590,6 +1584,20 @@ export function MisListas() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Botones Flotantes Globales (Fixed) */}
+            {vista === 'dashboard' && (
+                <button className="btn btn-primary btn-fab mobile-only-flex" onClick={handleAbrirCrearLista}>
+                    <span className="fab-icon" style={{ display: 'block' }}>+</span>
+                    <span className="fab-text">Nueva Lista</span>
+                </button>
+            )}
+
+            {vista === 'editor' && !isEditMode && (
+                <button className="btn btn-primary btn-fab mobile-only-flex" onClick={handleAbrirBuscador}>
+                    <span className="fab-icon" style={{ display: 'block' }}>+</span>
+                </button>
             )}
         </div>
     );
