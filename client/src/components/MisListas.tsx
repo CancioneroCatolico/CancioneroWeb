@@ -120,6 +120,43 @@ export function MisListas() {
         return [];
     });
 
+    const modalPushedRef = useRef(false);
+
+    // Manejo de botón Atrás para cerrar modales
+    useEffect(() => {
+        const algunModalAbierto = !!(isNameModalOpen || listToDelete || isSearchModalOpen || 
+                                   isSectionModalOpen || sectionToDelete || isSelectSectionModalOpen || 
+                                   importMessage || isQRModalOpen || listToRename);
+
+        if (algunModalAbierto && !modalPushedRef.current) {
+            window.history.pushState({ modalOpen: true }, "");
+            modalPushedRef.current = true;
+        } else if (!algunModalAbierto && modalPushedRef.current) {
+            if (window.history.state?.modalOpen) {
+                window.history.back();
+            }
+            modalPushedRef.current = false;
+        }
+
+        const handlePopState = () => {
+            if (modalPushedRef.current) {
+                modalPushedRef.current = false;
+                setIsNameModalOpen(false);
+                setListToDelete(null);
+                setIsSearchModalOpen(false);
+                setIsSectionModalOpen(false);
+                setSectionToDelete(null);
+                setIsSelectSectionModalOpen(false);
+                setImportMessage(null);
+                setIsQRModalOpen(false);
+                setListToRename(null);
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [isNameModalOpen, listToDelete, isSearchModalOpen, isSectionModalOpen, sectionToDelete, isSelectSectionModalOpen, importMessage, isQRModalOpen, listToRename]);
+
     // Cerrar menú al hacer clic fuera
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {

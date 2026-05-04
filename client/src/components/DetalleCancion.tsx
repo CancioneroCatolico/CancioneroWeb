@@ -55,6 +55,34 @@ export function DetalleCancion() {
     const [pendingSectionListName, setPendingSectionListName] = useState('');
     const [pendingSectionName, setPendingSectionName] = useState('');
 
+    const modalPushedRef = useRef(false);
+
+    // Manejo de botón Atrás para cerrar modales
+    useEffect(() => {
+        const algunModalAbierto = isAddListModalOpen || isSectionModalOpen;
+
+        if (algunModalAbierto && !modalPushedRef.current) {
+            window.history.pushState({ modalOpen: true }, "");
+            modalPushedRef.current = true;
+        } else if (!algunModalAbierto && modalPushedRef.current) {
+            if (window.history.state?.modalOpen) {
+                window.history.back();
+            }
+            modalPushedRef.current = false;
+        }
+
+        const handlePopState = () => {
+            if (modalPushedRef.current) {
+                modalPushedRef.current = false;
+                setIsAddListModalOpen(false);
+                setIsSectionModalOpen(false);
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [isAddListModalOpen, isSectionModalOpen]);
+
     // Cargar listas al abrir el modal
     const handleOpenAddListModal = () => {
         const saved = localStorage.getItem('cancionero_listas');

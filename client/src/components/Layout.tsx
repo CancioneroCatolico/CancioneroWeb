@@ -161,7 +161,7 @@ export function Layout() {
                                     <div className="desktop-dropdown-menu desktop-only-flex">
                                         <Link to="/" className="desktop-dropdown-item" onClick={() => setMenuOpen(false)}>Inicio</Link>
                                         <Link to="/mis-listas" className="desktop-dropdown-item" onClick={() => { setMenuOpen(false); window.dispatchEvent(new CustomEvent('reset-mis-listas')); }}>Mis Listas</Link>
-                                        <div className="desktop-dropdown-item" onClick={() => { toggleTheme(); setMenuOpen(false); }} style={{ cursor: 'pointer' }}>
+                                        <div className="desktop-dropdown-item" onClick={() => { toggleTheme(); }} style={{ cursor: 'pointer' }}>
                                             {theme === 'light' ? '🌙 Modo Oscuro' : '☀️ Modo Claro'}
                                         </div>
                                     </div>
@@ -192,7 +192,7 @@ export function Layout() {
                         <Link to="/mis-listas" className="mobile-menu-item" onClick={() => { setMenuOpen(false); window.dispatchEvent(new CustomEvent('reset-mis-listas')); }}>
                             Mis Listas
                         </Link>
-                        <div className="mobile-menu-item" onClick={() => { toggleTheme(); setMenuOpen(false); }}>
+                        <div className="mobile-menu-item" onClick={() => { toggleTheme(); }}>
                             {theme === 'light' ? '🌙 Modo Oscuro' : '☀️ Modo Claro'}
                         </div>
                     </div>
