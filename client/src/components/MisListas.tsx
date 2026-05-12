@@ -559,7 +559,14 @@ export function MisListas() {
         setSongToAdd(null);
         setIsSectionModalOpen(false);
         setNewSectionName('');
-        setImportMessage({ title: '¡Canción añadida!', text: `Se creó la sección "${sectionName}" con la canción.` });
+
+        if (sectionToEdit) {
+            setImportMessage({ title: '¡Sección actualizada!', text: `Se renombró la sección a "${sectionName}".` });
+        } else if (songToAdd) {
+            setImportMessage({ title: '¡Canción añadida!', text: `Se creó la sección "${sectionName}" con la canción.` });
+        } else {
+            setImportMessage({ title: '¡Sección añadida!', text: `Se creó la sección "${sectionName}".` });
+        }
     };
 
     const handleConfirmarAgregarCancionASeccion = (cancion: any, idSeccion: string | number) => {

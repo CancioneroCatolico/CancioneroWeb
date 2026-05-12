@@ -147,8 +147,16 @@ export function Layout() {
                             </div>
 
                              {/* MENU DESKTOP */}
-                             <div className="desktop-nav-links" style={{ position: 'relative' }} ref={menuRef}>
-                                <button className="btn-icon" onClick={() => setMenuOpen(!menuOpen)} title="Menú">
+                             <div className="desktop-nav-links" style={{ position: 'relative', alignItems: 'center' }} ref={menuRef}>
+                                <div className="inline-menu-items">
+                                    <Link to="/" className="nav-link priority-2">Inicio</Link>
+                                    <Link to="/mis-listas" className="nav-link priority-1" onClick={() => { window.dispatchEvent(new CustomEvent('reset-mis-listas')); }}>Mis Listas</Link>
+                                    <div className="nav-link priority-3" onClick={() => { toggleTheme(); }} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                                        {theme === 'light' ? '🌙 Oscuro' : '☀️ Claro'}
+                                    </div>
+                                </div>
+
+                                <button className="btn-icon hamburger-btn responsive-hamburger" onClick={() => setMenuOpen(!menuOpen)} title="Menú">
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <line x1="3" y1="12" x2="21" y2="12"></line>
                                         <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -158,10 +166,10 @@ export function Layout() {
 
                                 {/* Desktop Dropdown Menu */}
                                 {menuOpen && (
-                                    <div className="desktop-dropdown-menu desktop-only-flex">
-                                        <Link to="/" className="desktop-dropdown-item" onClick={() => setMenuOpen(false)}>Inicio</Link>
-                                        <Link to="/mis-listas" className="desktop-dropdown-item" onClick={() => { setMenuOpen(false); window.dispatchEvent(new CustomEvent('reset-mis-listas')); }}>Mis Listas</Link>
-                                        <div className="desktop-dropdown-item" onClick={() => { toggleTheme(); }} style={{ cursor: 'pointer' }}>
+                                    <div className="desktop-dropdown-menu desktop-only-flex hamburger-dropdown">
+                                        <Link to="/" className="desktop-dropdown-item dropdown-priority-2" onClick={() => setMenuOpen(false)}>Inicio</Link>
+                                        {/* Mis Listas no cae al dropdown en desktop porque siempre entra. En móvil se usa otro menú. */}
+                                        <div className="desktop-dropdown-item dropdown-priority-3" onClick={() => { toggleTheme(); }} style={{ cursor: 'pointer' }}>
                                             {theme === 'light' ? '🌙 Modo Oscuro' : '☀️ Modo Claro'}
                                         </div>
                                     </div>

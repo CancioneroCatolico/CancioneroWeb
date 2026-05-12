@@ -313,7 +313,7 @@ h6 {
   align-items: center !important;
   justify-content: flex-start !important;
   width: 100% !important;
-  max-width: 500px !important;
+  max-width: 350px !important;
   /* Limit width on desktop */
   gap: 8px !important;
 }
@@ -1211,6 +1211,66 @@ h6 {
 
 .btn-text:hover {
   background-color: var(--button-hover);
+}
+
+/* ===================== Nav Layout Responsive ===================== */
+
+.inline-menu-items {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.inline-menu-items .nav-link {
+    white-space: nowrap;
+    color: var(--text-color);
+    font-weight: 600;
+}
+.inline-menu-items .nav-link:hover {
+    color: var(--primary-color);
+}
+
+/* Default states */
+.responsive-hamburger {
+    display: none;
+}
+.hamburger-dropdown {
+    display: none !important;
+}
+.dropdown-priority-2 {
+    display: none !important;
+}
+.dropdown-priority-3 {
+    display: block !important; /* It is always the first one to fall into the menu */
+}
+
+/* Below 900px: Theme toggler falls into dropdown */
+@media (max-width: 900px) {
+    .priority-3 {
+        display: none !important;
+    }
+    .responsive-hamburger {
+        display: flex !important;
+    }
+    .hamburger-dropdown {
+        display: flex !important; /* It uses desktop-dropdown-menu which is flex/block based */
+    }
+}
+
+/* Below 820px: Inicio also falls into dropdown */
+@media (max-width: 820px) {
+    .priority-2 {
+        display: none !important;
+    }
+    .dropdown-priority-2 {
+        display: block !important;
+    }
+}
+
+@media (min-width: 901px) {
+    .hamburger-dropdown {
+        display: none !important;
+    }
 }
 
 /* ===================== Animaciones ===================== */
