@@ -53,8 +53,12 @@ export function MisListas() {
 
     const [menuAbierto, setMenuAbierto] = useState<{id: number | string, openUpwards: boolean} | null>(null);
 
-    // Dashboard Edit states
+    const [isEditMode, setIsEditMode] = useState(false);
     const [isDashboardEditMode, setIsDashboardEditMode] = useState(false);
+    const [hasAnimatedDashboard, setHasAnimatedDashboard] = useState(false);
+    const [hasAnimatedEditor, setHasAnimatedEditor] = useState(false);
+
+    // Dashboard Edit states
     const [listToRename, setListToRename] = useState<{ id: number | string, nombre: string } | null>(null);
     const [isRenameListModalOpen, setIsRenameListModalOpen] = useState(false);
     const [newRenameListName, setNewRenameListName] = useState('');
@@ -69,9 +73,6 @@ export function MisListas() {
     // Import Message Modal states
     const [importMessage, setImportMessage] = useState<{ title: string, text: string, isError?: boolean } | null>(null);
     const [isCopied, setIsCopied] = useState(false);
-
-    // Edit mode state
-    const [isEditMode, setIsEditMode] = useState(false);
 
     // Live Mode states
     const [currentSongIndex, setCurrentSongIndex] = useState(0);
@@ -126,7 +127,7 @@ export function MisListas() {
     useEffect(() => {
         const algunModalAbierto = !!(isNameModalOpen || listToDelete || isSearchModalOpen || 
                                    isSectionModalOpen || sectionToDelete || isSelectSectionModalOpen || 
-                                   importMessage || isQRModalOpen || listToRename);
+                                   isQRModalOpen || listToRename);
 
         if (algunModalAbierto && !modalPushedRef.current) {
             window.history.pushState({ modalOpen: true }, "");
@@ -147,7 +148,6 @@ export function MisListas() {
                 setIsSectionModalOpen(false);
                 setSectionToDelete(null);
                 setIsSelectSectionModalOpen(false);
-                setImportMessage(null);
                 setIsQRModalOpen(false);
                 setListToRename(null);
             }
@@ -155,7 +155,17 @@ export function MisListas() {
 
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
-    }, [isNameModalOpen, listToDelete, isSearchModalOpen, isSectionModalOpen, sectionToDelete, isSelectSectionModalOpen, importMessage, isQRModalOpen, listToRename]);
+    }, [isNameModalOpen, listToDelete, isSearchModalOpen, isSectionModalOpen, sectionToDelete, isSelectSectionModalOpen, isQRModalOpen, listToRename]);
+
+    // Auto-ocultar Toast de importMessage
+    useEffect(() => {
+        if (importMessage) {
+            const timer = setTimeout(() => {
+                setImportMessage(null);
+            }, 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [importMessage]);
 
     // Cerrar menú al hacer clic fuera
     useEffect(() => {
@@ -736,6 +746,7 @@ export function MisListas() {
     }); // Sin límite para que aparezcan todas y busca en título y número de canción
 
     const handleAbrirLista = (id: number | string) => {
+        setHasAnimatedEditor(false);
         setSearchParams({ lista: id.toString(), vista: 'editor' });
     };
 
@@ -748,11 +759,15 @@ export function MisListas() {
     };
 
     const handleVolver = () => {
+        setHasAnimatedDashboard(false);
         handleGoBack({});
     };
 
     const renderDashboard = () => (
-        <div className="lists-dashboard animate-fade-in list-editor">
+        <div 
+            className={`lists-dashboard list-editor ${!hasAnimatedDashboard ? 'animate-fade-in' : ''}`}
+            onAnimationEnd={() => setHasAnimatedDashboard(true)}
+        >
             <div className="lists-header">
                 <h2>Mis Listas</h2>
                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -944,7 +959,10 @@ export function MisListas() {
         const listaActiva = listas.find(l => l.id === listaActivaId);
 
         return (
-            <div className={`list-editor animate-fade-in ${isEditMode ? 'edit-mode-active' : ''}`}>
+            <div 
+                className={`list-editor ${!hasAnimatedEditor ? 'animate-fade-in' : ''} ${isEditMode ? 'edit-mode-active' : ''}`}
+                onAnimationEnd={() => setHasAnimatedEditor(true)}
+            >
                 <div className="editor-header-vertical">
                     <button className="btn-back-link" onClick={handleVolver}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1494,16 +1512,28 @@ export function MisListas() {
                 </div>
             )}
 
-            {/* Modal Mensajes Importación */}
+            {/* Toast de Mensajes */}
             {importMessage && (
-                <div className="modal-overlay">
-                    <div className="modal-content animate-fade-in" style={{ alignItems: 'center', maxWidth: '400px' }}>
-                        <h3 className="modal-title" style={{ color: importMessage.isError ? '#ef4444' : 'var(--text-color)', marginBottom: '16px' }}>{importMessage.title}</h3>
-                        <p style={{ textAlign: 'center', marginBottom: '24px', color: 'var(--secondary-color)', fontSize: '0.95rem' }}>{importMessage.text}</p>
-                        <div className="modal-actions" style={{ width: '100%', justifyContent: 'center' }}>
-                            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setImportMessage(null)}>Aceptar</button>
-                        </div>
-                    </div>
+                <div style={{
+                    position: 'fixed',
+                    bottom: '80px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    backgroundColor: importMessage.isError ? '#ef4444' : 'var(--primary-color)',
+                    color: 'white',
+                    padding: '12px 24px',
+                    borderRadius: '24px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                    zIndex: 10000,
+                    animation: 'simpleFade 0.2s ease-out',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    textAlign: 'center',
+                    minWidth: '200px'
+                }}>
+                    <span style={{ fontWeight: 'bold' }}>{importMessage.title}</span>
+                    {importMessage.text && <span style={{ fontSize: '0.85em', opacity: 0.9 }}>{importMessage.text}</span>}
                 </div>
             )}
 

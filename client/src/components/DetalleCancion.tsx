@@ -19,7 +19,7 @@ const Toast = ({ mensaje, visible }: { mensaje: string, visible: boolean }) => {
             borderRadius: '24px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
             zIndex: 10000,
-            animation: 'fadeIn 0.3s ease-out',
+            animation: 'simpleFade 0.2s ease-out',
             fontWeight: 500,
             whiteSpace: 'nowrap'
         }}>
@@ -138,7 +138,7 @@ export function DetalleCancion() {
 
         setToastMessage(`Añadida a "${listaNombre}"`);
         setIsToastVisible(true);
-        setTimeout(() => setIsToastVisible(false), 3000);
+        setTimeout(() => setIsToastVisible(false), 2000);
     };
 
     const handleConfirmarNuevaSeccion = () => {
@@ -176,7 +176,7 @@ export function DetalleCancion() {
 
         setToastMessage(`Añadida a "${pendingSectionListName}"`);
         setIsToastVisible(true);
-        setTimeout(() => setIsToastVisible(false), 3000);
+        setTimeout(() => setIsToastVisible(false), 2000);
     };
 
     const handleCrearYAnadir = () => {
