@@ -4,7 +4,7 @@ export const SCALE = [
 ];
 
 // Mapeo de bemoles a su equivalente enarmónico con sostenidos
-const FLAT_TO_SHARP: Record<string, string> = {
+export const FLAT_TO_SHARP: Record<string, string> = {
     'DOb': 'SI',
     'REb': 'DO#',
     'MIb': 'RE#',
@@ -14,11 +14,20 @@ const FLAT_TO_SHARP: Record<string, string> = {
     'SIb': 'LA#',
 };
 
+// Mapeo inverso: sostenidos a su equivalente enarmónico con bemoles
+export const SHARP_TO_FLAT: Record<string, string> = {
+    'DO#': 'REb',
+    'RE#': 'MIb',
+    'FA#': 'SOLb',
+    'SOL#': 'LAb',
+    'LA#': 'SIb',
+};
+
 /**
  * Normaliza una nota que puede tener bemol (b) o sostenido (#) a su equivalente en la escala cromática.
  * Ej: "SIb" -> "LA#", "DO#" -> "DO#", "RE" -> "RE"
  */
-function normalizeNote(note: string): string {
+export function normalizeNote(note: string): string {
     return FLAT_TO_SHARP[note] || note;
 }
 

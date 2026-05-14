@@ -151,6 +151,7 @@ export function Layout() {
                                 <div className="inline-menu-items">
                                     <Link to="/" className="nav-link priority-2">Inicio</Link>
                                     <Link to="/mis-listas" className="nav-link priority-1" onClick={() => { window.dispatchEvent(new CustomEvent('reset-mis-listas')); }}>Mis Listas</Link>
+                                    <Link to="/herramientas" className="nav-link priority-1">Herramientas</Link>
                                     <div className="nav-link priority-3" onClick={() => { toggleTheme(); }} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                                         {theme === 'light' ? '🌙 Oscuro' : '☀️ Claro'}
                                     </div>
@@ -200,6 +201,9 @@ export function Layout() {
                         <Link to="/mis-listas" className="mobile-menu-item" onClick={() => { setMenuOpen(false); window.dispatchEvent(new CustomEvent('reset-mis-listas')); }}>
                             Mis Listas
                         </Link>
+                        <Link to="/herramientas" className="mobile-menu-item" onClick={() => setMenuOpen(false)}>
+                            Herramientas
+                        </Link>
                         <div className="mobile-menu-item" onClick={() => { toggleTheme(); }}>
                             {theme === 'light' ? '🌙 Modo Oscuro' : '☀️ Modo Claro'}
                         </div>
@@ -229,21 +233,20 @@ export function Layout() {
                     <span className="bottom-label">Mis Listas</span>
                 </Link>
 
-                <button className={`bottom-nav-item ${mobileSearchOpen ? 'active' : ''}`} onClick={() => {
-                    if (mobileSearchOpen) {
-                        setMobileSearchOpen(false);
-                    } else {
-                        setMobileSearchOpen(true);
-                        setMenuOpen(false);
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                }}>
+                <Link to="/herramientas" className="bottom-nav-item" onClick={() => { setMenuOpen(false); setMobileSearchOpen(false); }}>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="bottom-icon">
-                        <circle cx="11" cy="11" r="8" fill="rgba(66, 153, 225, 0.3)" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        <path d="M4 21v-7" />
+                        <path d="M4 10V3" />
+                        <path d="M12 21v-9" />
+                        <path d="M12 8V3" />
+                        <path d="M20 21v-5" />
+                        <path d="M20 12V3" />
+                        <line x1="1" y1="14" x2="7" y2="14" />
+                        <line x1="9" y1="8" x2="15" y2="8" />
+                        <line x1="17" y1="16" x2="23" y2="16" />
                     </svg>
-                    <span className="bottom-label">Buscar</span>
-                </button>
+                    <span className="bottom-label">Herramientas</span>
+                </Link>
 
                 <button className={`bottom-nav-item ${menuOpen ? 'active' : ''}`} onClick={() => {
                     setMenuOpen(!menuOpen);

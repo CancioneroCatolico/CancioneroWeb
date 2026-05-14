@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import type { Cancion } from '../types';
 import { LineaCancion } from './LineaCancion';
 import { TranspositionControls } from './TranspositionControls';
+import { ChordPopup } from './ChordPopup';
 
 // Componente Toast simple
 const Toast = ({ mensaje, visible }: { mensaje: string, visible: boolean }) => {
@@ -57,9 +58,19 @@ export function DetalleCancion() {
 
     const modalPushedRef = useRef(false);
 
+    // Estado para ChordPopup
+    const [popupChord, setPopupChord] = useState<string | null>(null);
+    const [popupAnchorRect, setPopupAnchorRect] = useState<DOMRect | null>(null);
+
+    const handleChordClick = (chord: string, rect: DOMRect) => {
+        if (isFullscreen) return; // No abrir popup en modo fullscreen/live
+        setPopupChord(chord);
+        setPopupAnchorRect(rect);
+    };
+
     // Manejo de botón Atrás para cerrar modales
     useEffect(() => {
-        const algunModalAbierto = isAddListModalOpen || isSectionModalOpen;
+        const algunModalAbierto = isAddListModalOpen || isSectionModalOpen || !!popupChord;
 
         if (algunModalAbierto && !modalPushedRef.current) {
             window.history.pushState({ modalOpen: true }, "");
@@ -76,12 +87,14 @@ export function DetalleCancion() {
                 modalPushedRef.current = false;
                 setIsAddListModalOpen(false);
                 setIsSectionModalOpen(false);
+                setPopupChord(null);
+                setPopupAnchorRect(null);
             }
         };
 
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
-    }, [isAddListModalOpen, isSectionModalOpen]);
+    }, [isAddListModalOpen, isSectionModalOpen, popupChord]);
 
     // Cargar listas al abrir el modal
     const handleOpenAddListModal = () => {
@@ -497,6 +510,7 @@ export function DetalleCancion() {
                                 line={linea}
                                 transposition={transposition}
                                 fontSize={fontSize}
+                                onChordClick={handleChordClick}
                             />
                         </div>
                     ))}
@@ -650,6 +664,15 @@ export function DetalleCancion() {
             )}
 
             <Toast mensaje={toastMessage} visible={isToastVisible} />
+
+            {/* Chord Popup */}
+            {popupChord && (
+                <ChordPopup
+                    chordName={popupChord}
+                    anchorRect={popupAnchorRect}
+                    onClose={() => { setPopupChord(null); setPopupAnchorRect(null); }}
+                />
+            )}
         </div>
     );
 }

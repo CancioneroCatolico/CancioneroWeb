@@ -4,9 +4,12 @@ Esta sección cubre el núcleo funcional del proyecto: el procesamiento de músi
 
 ## 🎵 Sistema de Acordes
 - **Formato**: Usamos cifrado americano (A, B, C, D, E, F, G).
+- **Enarmonías**: Manejar siempre equivalencias enarmónicas (ej. C# = Db) usando mapeos predefinidos (`SHARP_TO_FLAT`). Evitar concatenaciones crudas (evitar "DO5 5"); procesar los nombres combinando limpiamente la `Raíz` y la `Calidad/Tipo`.
+- **Variantes y Posiciones**: Un mismo acorde puede tener múltiples posiciones en el diapasón. La estructura de datos de un acorde incluye `variants` (o posiciones), y cada variante maneja cuerdas mudas (`-1`), trastes pisados, cejillas (`barres`) con rangos de cuerdas, y dedos específicos.
 - **Parseo**: La lógica reside en `client/src/utils/chordParser.ts`.
 - **Renderizado**:
-  - Los acordes se renderizan sobre la línea de texto (`LineaCancion.tsx`).
+  - Los acordes sobre el texto se renderizan en `LineaCancion.tsx`.
+  - Los diagramas interactivos se renderizan en `ChordDiagram.tsx`.
   - **Letras**: Soporte para **Negrita** usando sintaxis Markdown (`**texto**`). El renderizador debe separar los fragmentos y aplicar `<strong>`.
 
 ## 🔄 Transporte (Transposition)

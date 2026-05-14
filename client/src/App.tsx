@@ -5,6 +5,9 @@ import { Layout } from './components/Layout'
 import { Portada } from './components/Portada'
 import { DetalleCancion } from './components/DetalleCancion'
 import { MisListas } from './components/MisListas'
+import { Herramientas } from './components/Herramientas'
+import { BibliotecaAcordes } from './components/BibliotecaAcordes'
+import { ExploradorAcordes } from './components/ExploradorAcordes'
 import { BusquedaProvider } from './context/BusquedaContext'
 import { ThemeProvider } from './context/ThemeContext'
 
@@ -42,6 +45,9 @@ function App() {
               <Route path="buscar" element={<Navigate to="/" replace />} />
               <Route path="cancion/:id" element={<DetalleCancion />} />
               <Route path="mis-listas" element={<MisListas />} />
+              <Route path="herramientas" element={<Herramientas />} />
+              <Route path="herramientas/biblioteca" element={<BibliotecaAcordes />} />
+              <Route path="herramientas/acordes" element={<ExploradorAcordes />} />
             </Route>
           </Routes>
         </BrowserRouter>

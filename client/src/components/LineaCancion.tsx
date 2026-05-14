@@ -6,6 +6,7 @@ interface LineaCancionProps {
     line: string;
     transposition?: number;
     fontSize?: number;
+    onChordClick?: (chord: string, rect: DOMRect) => void;
 }
 
 function renderTextWithBoldContext(text: string, initiallyBold: boolean) {
@@ -25,7 +26,7 @@ function renderTextWithBoldContext(text: string, initiallyBold: boolean) {
     return { nodes, isBold: currentBold };
 }
 
-export function LineaCancion({ line, transposition = 0, fontSize = 1 }: LineaCancionProps) {
+export function LineaCancion({ line, transposition = 0, fontSize = 1, onChordClick }: LineaCancionProps) {
     const segments = parseLyricsLine(line);
     const lineRef = useRef<HTMLDivElement>(null);
 
@@ -104,12 +105,16 @@ export function LineaCancion({ line, transposition = 0, fontSize = 1 }: LineaCan
                 {segments.map((segment, index) => (
                     <div key={index} style={{ marginRight: '1ch' }}>
                         <span
-                            className="text-primary chord-block"
+                            className={`text-primary chord-block ${onChordClick ? 'chord-clickable' : ''}`}
                             style={{
                                 fontSize: '0.9em',
                                 fontWeight: 'bold',
                                 whiteSpace: 'pre'
                             }}
+                            onClick={onChordClick && segment.chord ? (e) => {
+                                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                onChordClick(transposeChord(segment.chord!, transposition), rect);
+                            } : undefined}
                         >
                             {segment.chord ? transposeChord(segment.chord, transposition) : ''}
                             {/* Incluimos el texto (que son solo espacios) para mantener la separación original */}
@@ -158,7 +163,7 @@ export function LineaCancion({ line, transposition = 0, fontSize = 1 }: LineaCan
                                 }}
                             >
                                 <span
-                                    className="chord-float text-primary"
+                                    className={`chord-float text-primary ${onChordClick ? 'chord-clickable' : ''}`}
                                     style={{
                                         position: 'absolute',
                                         top: 0,
@@ -167,6 +172,11 @@ export function LineaCancion({ line, transposition = 0, fontSize = 1 }: LineaCan
                                         fontSize: '0.9em',
                                         fontWeight: 'bold',
                                     }}
+                                    onClick={onChordClick ? (e) => {
+                                        e.stopPropagation();
+                                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                        onChordClick(tChord!, rect);
+                                    } : undefined}
                                 >
                                     {tChord}
                                 </span>
