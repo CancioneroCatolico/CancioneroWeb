@@ -9,6 +9,41 @@ interface LineaCancionProps {
     onChordClick?: (chord: string, rect: DOMRect) => void;
 }
 
+function renderClickableChords(text: string | null, onChordClick?: (chord: string, rect: DOMRect) => void) {
+    if (!text) return null;
+    if (!onChordClick) return <>{text}</>;
+
+    const regex = /(\b(?:DO|RE|MI|FA|SOL|LA|SI)[#b]?[a-zA-Z0-9#\+\-ºø]*(?:\/(?:DO|RE|MI|FA|SOL|LA|SI)[#b]?)?(?=\s|$|[^\w#\+\-ºø/]))/i;
+    const parts = text.split(regex);
+
+    return (
+        <>
+            {parts.map((part, i) => {
+                if (!part) return null;
+                const isChord = /^(DO|RE|MI|FA|SOL|LA|SI)/i.test(part) && part.toUpperCase() !== 'SOLO';
+                
+                if (isChord) {
+                    return (
+                        <span
+                            key={i}
+                            className="chord-clickable"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                onChordClick(part, rect);
+                            }}
+                        >
+                            {part}
+                        </span>
+                    );
+                }
+                
+                return <span key={i} onClick={(e) => e.stopPropagation()} style={{ cursor: 'default' }}>{part}</span>;
+            })}
+        </>
+    );
+}
+
 function renderTextWithBoldContext(text: string, initiallyBold: boolean) {
     if (!text) return { nodes: text, isBold: initiallyBold };
     
@@ -105,18 +140,14 @@ export function LineaCancion({ line, transposition = 0, fontSize = 1, onChordCli
                 {segments.map((segment, index) => (
                     <div key={index} style={{ marginRight: '1ch' }}>
                         <span
-                            className={`text-primary chord-block ${onChordClick ? 'chord-clickable' : ''}`}
+                            className={`text-primary chord-block`}
                             style={{
                                 fontSize: '0.9em',
                                 fontWeight: 'bold',
                                 whiteSpace: 'pre'
                             }}
-                            onClick={onChordClick && segment.chord ? (e) => {
-                                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                onChordClick(transposeChord(segment.chord!, transposition), rect);
-                            } : undefined}
                         >
-                            {segment.chord ? transposeChord(segment.chord, transposition) : ''}
+                            {segment.chord ? renderClickableChords(transposeChord(segment.chord, transposition), onChordClick) : ''}
                             {/* Incluimos el texto (que son solo espacios) para mantener la separación original */}
                             {segment.text}
                         </span>
@@ -163,7 +194,7 @@ export function LineaCancion({ line, transposition = 0, fontSize = 1, onChordCli
                                 }}
                             >
                                 <span
-                                    className={`chord-float text-primary ${onChordClick ? 'chord-clickable' : ''}`}
+                                    className={`chord-float text-primary`}
                                     style={{
                                         position: 'absolute',
                                         top: 0,
@@ -172,13 +203,8 @@ export function LineaCancion({ line, transposition = 0, fontSize = 1, onChordCli
                                         fontSize: '0.9em',
                                         fontWeight: 'bold',
                                     }}
-                                    onClick={onChordClick ? (e) => {
-                                        e.stopPropagation();
-                                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                        onChordClick(tChord!, rect);
-                                    } : undefined}
                                 >
-                                    {tChord}
+                                    {renderClickableChords(tChord, onChordClick)}
                                 </span>
                             </span>
                         )}

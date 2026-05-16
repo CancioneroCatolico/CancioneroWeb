@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useLayoutEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import type { Cancion } from '../types';
 import { LineaCancion } from './LineaCancion';
 import { TranspositionControls } from './TranspositionControls';
@@ -31,6 +31,7 @@ const Toast = ({ mensaje, visible }: { mensaje: string, visible: boolean }) => {
 
 export function DetalleCancion() {
     const { id } = useParams(); // Lee el ID de la URL (ej: /cancion/abc1234)
+    const navigate = useNavigate();
     const [cancion, setCancion] = useState<Cancion | null>(null);
     const [transposition, setTransposition] = useState<number>(0);
     const [viewMode, setViewMode] = useState<'vertical' | 'columns'>('vertical');
@@ -38,6 +39,7 @@ export function DetalleCancion() {
     const [userHasManuallyResized, setUserHasManuallyResized] = useState<boolean>(false);
     const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
     const [isFsControlsVisible, setIsFsControlsVisible] = useState(true);
+    const [savedManualFontSize, setSavedManualFontSize] = useState<number | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const innerWrapperRef = useRef<HTMLDivElement>(null);
 
@@ -268,7 +270,7 @@ export function DetalleCancion() {
     // Cálculo dinámico de escala (mediante lógica unificada de while loop)
     useLayoutEffect(() => {
         const calculateAjuste = () => {
-            if (userHasManuallyResized) return;
+            if (userHasManuallyResized && !isFullscreen) return;
             if (!containerRef.current || !innerWrapperRef.current) return;
 
             const containerEl = containerRef.current;
@@ -339,7 +341,15 @@ export function DetalleCancion() {
                 Simplemente el Card se pone encima (z-index).
             */}
             <div style={{ flexShrink: 0 }}>
-                <h1 className="text-primary" style={{ marginBottom: '5px' }}>{cancion.titulo}</h1>
+                <button className="btn-back-link" onClick={() => navigate(-1)} style={{ marginBottom: '12px' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                    Atrás
+                </button>
+                <h1 className="text-primary" style={{ marginBottom: '5px' }}>
+                    {cancion.numeroCancion ? `${cancion.numeroCancion}. ` : ''}{cancion.titulo}
+                </h1>
                 <h3 className="text-secondary" style={{ marginTop: '0' }}>{cancion.autor}</h3>
 
                 <div
@@ -420,7 +430,18 @@ export function DetalleCancion() {
 
                     <button
                         className="btn"
-                        onClick={() => setIsFullscreen(!isFullscreen)}
+                        onClick={() => {
+                            if (!isFullscreen) {
+                                if (userHasManuallyResized) setSavedManualFontSize(fontSize);
+                                else setSavedManualFontSize(null);
+                            } else {
+                                if (savedManualFontSize !== null) {
+                                    setFontSize(savedManualFontSize);
+                                    setUserHasManuallyResized(true);
+                                }
+                            }
+                            setIsFullscreen(!isFullscreen);
+                        }}
                         style={{
                             border: '1px solid var(--card-border)',
                             backgroundColor: isFullscreen ? 'var(--primary-color)' : 'transparent',
@@ -468,7 +489,13 @@ export function DetalleCancion() {
                 {/* Floating Exit Button for Fullscreen (Visible only in FS) */}
                 {isFullscreen && (
                     <button
-                        onClick={() => setIsFullscreen(false)}
+                        onClick={() => {
+                            if (savedManualFontSize !== null) {
+                                setFontSize(savedManualFontSize);
+                                setUserHasManuallyResized(true);
+                            }
+                            setIsFullscreen(false);
+                        }}
                         style={{
                             position: 'fixed', // Fixed to viewport
                             top: '20px',

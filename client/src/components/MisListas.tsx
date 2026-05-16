@@ -343,7 +343,7 @@ export function MisListas() {
                 nombre: newListName.trim(),
                 secciones: []
             };
-            setListas(prev => [...prev, nuevaLista]);
+            setListas(prev => [nuevaLista, ...prev]);
             setIsNameModalOpen(false);
             setNewListName('');
         }
@@ -352,6 +352,27 @@ export function MisListas() {
     const handleCancelarCrearLista = () => {
         setIsNameModalOpen(false);
         setNewListName('');
+    };
+
+    const handleClonarLista = (id: number | string) => {
+        const listaOriginal = listas.find(l => l.id === id);
+        if (!listaOriginal) return;
+
+        const nuevaLista: ListaItem = {
+            id: crypto.randomUUID ? crypto.randomUUID() : Date.now() + Math.random(),
+            nombre: `${listaOriginal.nombre} (copia)`,
+            secciones: listaOriginal.secciones.map(s => ({
+                ...s,
+                idSeccion: crypto.randomUUID ? crypto.randomUUID() : Date.now() + Math.random(),
+                canciones: s.canciones.map(c => ({
+                    ...c,
+                    idUnicoEnLista: crypto.randomUUID ? crypto.randomUUID() : Date.now() + Math.random()
+                }))
+            }))
+        };
+        
+        setListas(prev => [nuevaLista, ...prev]);
+        setImportMessage({ title: "¡Lista clonada!", text: `Se ha creado una copia de "${listaOriginal.nombre}".` });
     };
 
     // Funciones Importar/Exportar
@@ -897,6 +918,21 @@ export function MisListas() {
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
                                                                         setMenuAbierto(null);
+                                                                        handleClonarLista(lista.id);
+                                                                    }}
+                                                                >
+                                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', display: 'inline-block' }}>
+                                                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                                                    </svg>
+                                                                    Clonar
+                                                                </button>
+                                                                <button
+                                                                    className="btn-icon-small"
+                                                                    style={{ width: '100%', justifyContent: 'flex-start', padding: '8px 12px', borderRadius: '4px', fontSize: '14px', textAlign: 'left', marginBottom: '4px' }}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setMenuAbierto(null);
                                                                         handleAbrirRenombrarLista(lista.id, lista.nombre);
                                                                     }}
                                                                 >
@@ -966,8 +1002,7 @@ export function MisListas() {
                 <div className="editor-header-vertical">
                     <button className="btn-back-link" onClick={handleVolver}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="19" y1="12" x2="5" y2="12"></line>
-                            <polyline points="12 19 5 12 12 5"></polyline>
+                            <polyline points="15 18 9 12 15 6" />
                         </svg>
                         Volver
                     </button>
@@ -1668,8 +1703,8 @@ export function MisListas() {
                 </button>
             )}
 
-            {vista === 'editor' && !isEditMode && (
-                <button className="btn btn-primary btn-fab mobile-only-flex" onClick={handleAbrirBuscador}>
+            {vista === 'editor' && (
+                <button className="btn btn-primary btn-fab mobile-only-flex" style={{ zIndex: 9999 }} onClick={handleAbrirBuscador}>
                     <span className="fab-icon" style={{ display: 'block' }}>+</span>
                 </button>
             )}

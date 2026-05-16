@@ -128,7 +128,7 @@ export function Portada() {
         <div className="portada-container">
             {/* Sección de Búsqueda Avanzada Movida aquí */}
             <div className="advanced-search-section" style={{ marginBottom: '30px', paddingBottom: '20px', borderBottom: '1px solid var(--card-border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '15px' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '15px' }}>
                     <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--primary-color)' }}>Búsqueda Avanzada</h3>
                     {tieneFiltrosActivos && (
                         <button
